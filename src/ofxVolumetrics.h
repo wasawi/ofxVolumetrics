@@ -12,8 +12,7 @@
 #include "ofxTexture3d.h"
 #include "ofxImageSequencePlayer.h"
 
-class ofxVolumetrics
-{
+class ofxVolumetrics{
 public:
     ofxVolumetrics();
     virtual ~ofxVolumetrics();
@@ -22,6 +21,8 @@ public:
     void updateVolumeData(unsigned char * data, int w, int h, int d, int xOffset, int yOffset, int zOffset);
     void drawVolume(float x, float y, float z, float size, int zTexOffset);
     void drawVolume(float x, float y, float z, float w, float h, float d, int zTexOffset);
+
+	// getters
     bool isInitialized();
     int getVolumeWidth();
     int getVolumeHeight();
@@ -33,12 +34,21 @@ public:
     float getZQuality();
     float getThreshold();
     float getDensity();
+	
+	float getDithering();
+
+	// setters
     void setXyQuality(float q);
     void setZQuality(float q);
     void setThreshold(float t);
     void setDensity(float d);
     void setRenderSettings(float xyQuality, float zQuality, float dens, float thresh);
     void setVolumeTextureFilterMode(GLint filterMode);
+	void setDithering(float d);
+	void setElevation(float elev);
+	void setAzimuth(float azi);
+	void setClipDepth(float depth);
+	
 protected:
 private:
     void drawRGBCube();
@@ -55,8 +65,17 @@ private:
     int volWidth, volHeight, volDepth;
     int volWidthPOT, volHeightPOT, volDepthPOT;
     bool bIsPowerOfTwo;
+
     ofVec3f quality;
     float threshold;
     float density;
     int renderWidth, renderHeight;
+	
+	float dithering;
+	float clipPlaneDepth;
+	float elevation;
+	float azimuth;
+	
 };
+
+

@@ -12,7 +12,7 @@ class ofxTextureData3d : public ofTextureData
 		glTypeInternal = GL_RGB8;
 		textureTarget = GL_TEXTURE_3D;
 
-		glType = GL_RGB;
+        glType = GL_RGB;
 		pixelType = GL_UNSIGNED_BYTE;
 
 		tex_t = 0;
