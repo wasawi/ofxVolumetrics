@@ -128,7 +128,7 @@ void ofxVolumetrics::drawVolume(float x, float y, float z, float size, int zTexO
 
 void ofxVolumetrics::drawVolume(float x, float y, float z, float w, float h, float d, int zTexOffset)
 {
-    updateRenderDimentions();
+//    updateRenderDimentions();
 	
     ofVec3f cubeSize = ofVec3f(w, h, d);
 	
@@ -172,7 +172,7 @@ void ofxVolumetrics::drawVolume(float x, float y, float z, float w, float h, flo
 	volumeShader.setUniform1f("azimuth", 360*azimuth);
 	volumeShader.setUniform1f("elevation", 360*elevation);
     volumeShader.setUniform3f("vol_d", (float)volWidth, (float)volHeight, (float)volDepth); //dimensions of the volume texture
-    volumeShader.setUniform2f("bg_d", (float)renderWidth, (float)renderHeight); // dimensions of the background texture
+//    volumeShader.setUniform2f("bg_d", (float)renderWidth, (float)renderHeight); // dimensions of the background texture
     volumeShader.setUniform1f("zoffset",zTexOffset); // used for animation so that we dont have to upload the entire volume every time
     volumeShader.setUniform1f("quality", quality.z); // 0 ... 1
     volumeShader.setUniform1f("density", density); // 0 ... 1
@@ -188,20 +188,32 @@ void ofxVolumetrics::drawVolume(float x, float y, float z, float w, float h, flo
 	
     volumeShader.end();
     fboRender.end();
-	
+/*
 	ofPushView();
-	
+
     glColor4iv(color);
 	ofSetupScreenOrtho();
 	//	ofSetupScreenOrtho(ofGetWidth(), ofGetHeight(),OF_ORIENTATION_DEFAULT,false,0,1000);
 	//ofSetupScreenPerspective(ofGetWidth(), ofGetHeight(),OF_ORIENTATION_DEFAULT,false,50,0,1000);
-	fboRender.draw(0,0,ofGetWidth(),ofGetHeight());
-	
+	fboRender.draw(x,y, ofGetWidth(), ofGetHeight());
+//	fboRender.draw(0,0, 200, 200);
 	//	lutTexture.draw(300, 50, 0, 256, 20); // Draw the color mapping used on the screen, for viewer reference
 	
     ofPopView();
-	
+*/
 }
+void ofxVolumetrics::draw(float x, float y, float w, float h){
+	ofPushView();
+	
+//    glColor4iv(color);
+//	ofSetupScreenOrtho();
+
+	fboRender.draw(x,y, w, h);
+	//	fboRender.draw(0,0, 200, 200);
+    ofPopView();
+
+}
+
 void ofxVolumetrics::drawRGBCube()
 {
     glEnableClientState(GL_VERTEX_ARRAY);
@@ -232,7 +244,8 @@ void ofxVolumetrics::updateRenderDimentions()
     }
 }
 
-	//************ getters ***************//
+
+//************ getters ***************//
 
 
 bool ofxVolumetrics::isInitialized()

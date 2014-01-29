@@ -14,6 +14,7 @@
 
 class ofxVolumetrics{
 public:
+	
     ofxVolumetrics();
     virtual ~ofxVolumetrics();
     void setup(int w, int h, int d, ofVec3f voxelSize, bool usePowerOfTwoTexSize=false);
@@ -21,7 +22,8 @@ public:
     void updateVolumeData(unsigned char * data, int w, int h, int d, int xOffset, int yOffset, int zOffset);
     void drawVolume(float x, float y, float z, float size, int zTexOffset);
     void drawVolume(float x, float y, float z, float w, float h, float d, int zTexOffset);
-
+	void draw(float x, float y, float w, float h);
+	
 	// getters
     bool isInitialized();
     int getVolumeWidth();
