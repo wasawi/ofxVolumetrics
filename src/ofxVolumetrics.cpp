@@ -117,7 +117,7 @@ void ofxVolumetrics::updateVolumeData(unsigned char * data, int w, int h, int d,
     volumeTexture.loadData(data, w, h, d, xOffset, yOffset, zOffset, GL_LUMINANCE);
 }
 
-void ofxVolumetrics::drawVolume(float x, float y, float z, float size, int zTexOffset)
+void ofxVolumetrics::update(float x, float y, float z, float size, int zTexOffset)
 {
     ofVec3f volumeSize = voxelRatio * ofVec3f(volWidth,volHeight,volDepth);
     float maxDim = max(max(volumeSize.x, volumeSize.y), volumeSize.z);
@@ -152,12 +152,12 @@ void ofxVolumetrics::drawVolume(float x, float y, float z, float w, float h, flo
     ofClear(0,0,0,0);
 	
     //load matricies from outside the FBO
-    glMatrixMode(GL_PROJECTION);
+//    glMatrixMode(GL_PROJECTION);
     glLoadMatrixf(proj);
     glMatrixMode(GL_MODELVIEW);
     glLoadMatrixf(modl);
 	
-    ofTranslate(x-cubeSize.x/2-20, y-cubeSize.y/2, z-cubeSize.z/2);
+    ofTranslate(x - cubeSize.x/2-20, y - cubeSize.y/2, z - cubeSize.z/2);
     ofScale(cubeSize.x,cubeSize.y,cubeSize.z);
 	
     //pass variables to the shader
@@ -172,7 +172,7 @@ void ofxVolumetrics::drawVolume(float x, float y, float z, float w, float h, flo
 	volumeShader.setUniform1f("azimuth", 360*azimuth);
 	volumeShader.setUniform1f("elevation", 360*elevation);
     volumeShader.setUniform3f("vol_d", (float)volWidth, (float)volHeight, (float)volDepth); //dimensions of the volume texture
-//    volumeShader.setUniform2f("bg_d", (float)renderWidth, (float)renderHeight); // dimensions of the background texture
+    volumeShader.setUniform2f("bg_d", (float)renderWidth, (float)renderHeight); // dimensions of the background texture
     volumeShader.setUniform1f("zoffset",zTexOffset); // used for animation so that we dont have to upload the entire volume every time
     volumeShader.setUniform1f("quality", quality.z); // 0 ... 1
     volumeShader.setUniform1f("density", density); // 0 ... 1
@@ -188,30 +188,17 @@ void ofxVolumetrics::drawVolume(float x, float y, float z, float w, float h, flo
 	
     volumeShader.end();
     fboRender.end();
-/*
-	ofPushView();
-
-    glColor4iv(color);
-	ofSetupScreenOrtho();
-	//	ofSetupScreenOrtho(ofGetWidth(), ofGetHeight(),OF_ORIENTATION_DEFAULT,false,0,1000);
-	//ofSetupScreenPerspective(ofGetWidth(), ofGetHeight(),OF_ORIENTATION_DEFAULT,false,50,0,1000);
-	fboRender.draw(x,y, ofGetWidth(), ofGetHeight());
-//	fboRender.draw(0,0, 200, 200);
-	//	lutTexture.draw(300, 50, 0, 256, 20); // Draw the color mapping used on the screen, for viewer reference
-	
-    ofPopView();
-*/
 }
 void ofxVolumetrics::draw(float x, float y, float w, float h){
-	ofPushView();
-	
-//    glColor4iv(color);
-//	ofSetupScreenOrtho();
+//	ofPushView();
+//	ofSetOrientation(OF_ORIENTATION_DEFAULT);
+// (float width, float height, float fov, float nearDist, float farDist)
+//	ofSetupScreenPerspective(ofGetWidth(), ofGetHeight(),90,0,1000);
 
 	fboRender.draw(x,y, w, h);
-	//	fboRender.draw(0,0, 200, 200);
-    ofPopView();
-
+//	ofPopView();
+//	lutTexture.draw(300, 50, 0, 256, 20); // Draw the color mapping used on the screen, for viewer reference
+	
 }
 
 void ofxVolumetrics::drawRGBCube()
@@ -236,6 +223,7 @@ void ofxVolumetrics::drawRGBCube()
 
 void ofxVolumetrics::updateRenderDimentions()
 {
+	ofLog(OF_LOG_NOTICE, "update render");
     if((int)(ofGetWidth() * quality.x) != renderWidth)
     {
         renderWidth = ofGetWidth()*quality.x;
@@ -272,9 +260,6 @@ int ofxVolumetrics::getRenderHeight()
 {
     return renderHeight;
 }
-
-
-
 float ofxVolumetrics::getXyQuality()
 {
     return quality.x;
@@ -294,15 +279,14 @@ float ofxVolumetrics::getDensity()
 ofFbo & ofxVolumetrics::getFboReference(){
     return fboRender;
 }
-
 float ofxVolumetrics::getDithering()
 {
     return dithering;
 }
 
 
-
 //************ setters ***************//
+
 
 void ofxVolumetrics::setXyQuality(float q)
 {
@@ -323,16 +307,12 @@ void ofxVolumetrics::setDensity(float d)
 {
     density = MAX(d,0.0);
 }
-
 void ofxVolumetrics::setElevation(float elev){
 	elevation = elev;
 }
-
 void ofxVolumetrics::setAzimuth(float azi){
 	azimuth = azi;
 }
-
-
 void ofxVolumetrics::setDithering(float d)
 {
     dithering = ofClamp(d,0.0,1.0);
@@ -340,7 +320,6 @@ void ofxVolumetrics::setDithering(float d)
 void ofxVolumetrics::setClipDepth(float depth){
 	clipPlaneDepth = ofClamp(depth,-1.0,1.0);;
 }
-
 void ofxVolumetrics::setRenderSettings(float xyQuality, float zQuality, float dens, float thresh)
 {
     setXyQuality(xyQuality);
@@ -348,7 +327,6 @@ void ofxVolumetrics::setRenderSettings(float xyQuality, float zQuality, float de
     setDensity(dens);
     setThreshold(thresh);
 }
-
 void ofxVolumetrics::setVolumeTextureFilterMode(GLint filterMode) {
     if(filterMode != GL_NEAREST && filterMode != GL_LINEAR) return;
 	
