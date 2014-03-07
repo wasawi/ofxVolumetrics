@@ -11,7 +11,11 @@ ofxVolumetrics::ofxVolumetrics()
     volHeight = renderHeight = 0;
     volDepth = 0;
     bIsInitialized = false;
-
+	sizeFactor= .5;
+	
+	cubeSize		= ofVec3f(1, 1, 1);
+	cubePos			= ofVec3f(0, 0, 0);
+	
     /* Front side */
     volNormals[0] = ofVec3f(0.0, 0.0, 1.0);
     volNormals[1] = ofVec3f(0.0, 0.0, 1.0);
@@ -105,11 +109,6 @@ void ofxVolumetrics::destroy()
 //    fboBackground.destroy();
 //    fboRender.destroy();
     volumeTexture.clear();
-
-    volWidth = renderWidth = 0;
-    volHeight = renderHeight = 0;
-    volDepth = 0;
-    bIsInitialized = false;
 }
 
 void ofxVolumetrics::updateVolumeData(unsigned char * data, int w, int h, int d, int xOffset, int yOffset, int zOffset)
@@ -128,15 +127,15 @@ void ofxVolumetrics::update(float x, float y, float z, float size, int zTexOffse
 
 void ofxVolumetrics::drawVolume(float x, float y, float z, float w, float h, float d, int zTexOffset)
 {
-//    updateRenderDimentions();
+//	updateRenderDimentions();
+	cubeSize = ofVec3f(w, h, d);
 	
-    ofVec3f cubeSize = ofVec3f(w, h, d);
-	
-    GLfloat modl[16], proj[16];
-    glGetFloatv( GL_MODELVIEW_MATRIX, modl);
-    glGetFloatv(GL_PROJECTION_MATRIX, proj);
-    GLint color[4];
-    glGetIntegerv(GL_CURRENT_COLOR, color);
+	GLfloat modl[16], proj[16];
+//	modl= cam. getmatrix //////// we need to try to get the camera from the scene instead of loading gl matrices.
+	glGetFloatv( GL_MODELVIEW_MATRIX, modl);
+	glGetFloatv(GL_PROJECTION_MATRIX, proj);
+	GLint color[4];
+	glGetIntegerv(GL_CURRENT_COLOR, color);
 	
     ofVec3f scale,t;
     ofQuaternion a,b;
@@ -144,51 +143,75 @@ void ofxVolumetrics::drawVolume(float x, float y, float z, float w, float h, flo
 	
     GLint cull_mode;
     glGetIntegerv(GL_FRONT_FACE, &cull_mode);
-    GLint cull_mode_fbo = (scale.x*scale.y*scale.z) > 0 ? GL_CCW : GL_CW;
+    GLint cull_mode_fbo = (scale.x * scale.y * scale.z) > 0 ? GL_CCW : GL_CW;
+
+	// This allows us to draw a cube around the fbo texture
+	ofEnableDepthTest();
 	
-    /* raycasting pass */
+	/* raycasting pass */
     fboRender.begin();
     volumeShader.begin();
-    ofClear(0,0,0,0);
-	
+    ofClear(0);
+
     //load matricies from outside the FBO
 //    glMatrixMode(GL_PROJECTION);
     glLoadMatrixf(proj);
     glMatrixMode(GL_MODELVIEW);
     glLoadMatrixf(modl);
-	
-    ofTranslate(x - cubeSize.x/2-20, y - cubeSize.y/2, z - cubeSize.z/2);
+
+	ofPushView();
+    ofTranslate(x - cubeSize.x/2, y - cubeSize.y/2, z - cubeSize.z/2);
     ofScale(cubeSize.x,cubeSize.y,cubeSize.z);
-	
-    //pass variables to the shader
+
+    //pass parameters to the shader
     glActiveTexture(GL_TEXTURE1);
     volumeTexture.bind();
     volumeShader.setUniform1i("volume_tex", 1); // volume texture reference
     volumeTexture.unbind();
 	
 	glActiveTexture(GL_TEXTURE0);
-	
-	volumeShader.setUniform1f("clipPlaneDepth", 0.5*clipPlaneDepth);
-	volumeShader.setUniform1f("azimuth", 360*azimuth);
-	volumeShader.setUniform1f("elevation", 360*elevation);
-    volumeShader.setUniform3f("vol_d", (float)volWidth, (float)volHeight, (float)volDepth); //dimensions of the volume texture
-    volumeShader.setUniform2f("bg_d", (float)renderWidth, (float)renderHeight); // dimensions of the background texture
-    volumeShader.setUniform1f("zoffset",zTexOffset); // used for animation so that we dont have to upload the entire volume every time
+	//dimensions of the volume texture
+    volumeShader.setUniform3f("vol_d", (float)volWidth, (float)volHeight, (float)volDepth);
+	// dimensions of the background texture
+    volumeShader.setUniform2f("bg_d", (float)renderWidth, (float)renderHeight);
+	// used for animation so that we dont have to upload the entire volume every time
+    volumeShader.setUniform1f("zoffset", zTexOffset);
     volumeShader.setUniform1f("quality", quality.z); // 0 ... 1
     volumeShader.setUniform1f("density", density); // 0 ... 1
 	volumeShader.setUniform1f("dithering", dithering); // 0 ... 1
     volumeShader.setUniform1f("threshold", threshold);//(float)mouseX/(float)ofGetWidth());
+	volumeShader.setUniform1f("clipPlaneDepth", -sizeFactor*planeCoords->y);
+	volumeShader.setUniform1f("azimuth", 360*azimuth);
+	volumeShader.setUniform1f("elevation", 360*elevation);
 	
     glFrontFace(cull_mode_fbo);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_FRONT);
-    drawRGBCube();
+	drawRGBCube();
+
+	
     glDisable(GL_CULL_FACE);
     glFrontFace(cull_mode);
+	volumeShader.end();
+	ofPopView();
+
+//	drawCube(1.);
+	ofDisableAntiAliasing();
+	ofDisableSmoothing();
+//	drawSlices(1.011);
+	drawLimits(1.011);
 	
-    volumeShader.end();
-    fboRender.end();
+	ofDisableDepthTest();
+//	drawSphere();
+
+	
+	drawAxis(.01);
+
+	
+	fboRender.end();
+
 }
+
 void ofxVolumetrics::draw(float x, float y, float w, float h){
 //	ofPushView();
 //	ofSetOrientation(OF_ORIENTATION_DEFAULT);
@@ -196,9 +219,9 @@ void ofxVolumetrics::draw(float x, float y, float w, float h){
 //	ofSetupScreenPerspective(ofGetWidth(), ofGetHeight(),90,0,1000);
 
 	fboRender.draw(x,y, w, h);
+
 //	ofPopView();
 //	lutTexture.draw(300, 50, 0, 256, 20); // Draw the color mapping used on the screen, for viewer reference
-	
 }
 
 void ofxVolumetrics::drawRGBCube()
@@ -221,9 +244,130 @@ void ofxVolumetrics::drawRGBCube()
     glDisableClientState(GL_VERTEX_ARRAY);
 }
 
+void ofxVolumetrics::drawCube(float size)
+{
+	float f = .9999;
+	
+	// Draw Cube
+	ofPushStyle();
+		ofSetColor(120);
+		ofNoFill();
+	ofPushMatrix();
+		ofScale(cubeSize.x*f,cubeSize.y*f,cubeSize.z*f);
+		ofDrawBox(0,0,0,size);
+	ofPopMatrix();
+	ofPopStyle();
+}
+
+void ofxVolumetrics::drawSphere(float size)
+{
+
+}
+
+void ofxVolumetrics::drawSlices(float size)
+{
+	float f = 1.011;
+	//	cout<< cubeSize.x<< endl;
+	//	cout<< axialPlane<< endl;
+
+	ofVec3f coronalPlane	= ofVec3f(0,0,planeCoords->z);
+	ofVec3f sagittalPlane	= ofVec3f(0,0,planeCoords->x);
+	ofVec3f axialPlane		= ofVec3f(0,0,planeCoords->y);
+
+	coronalPlane		*= sizeFactor;
+	sagittalPlane		*= sizeFactor;
+	axialPlane			*= sizeFactor;
+
+	// Draw Slices
+	ofPushStyle();
+		ofSetColor(150);
+		ofNoFill();
+		ofSetPlaneResolution(2, 2);
+	ofPushMatrix();
+		ofScale(cubeSize.x*f,cubeSize.y*f,cubeSize.z*f);
+		ofPushMatrix();
+		ofRotateY(90);
+		ofDrawPlane(sagittalPlane, size, size);
+		ofPopMatrix();
+		
+		ofScale(-1.,-1.,-1.);
+		ofDrawPlane(axialPlane, size, size);
+	
+		ofRotateX(90);
+		ofDrawPlane(coronalPlane, size, size);
+	
+	ofPopMatrix();
+	ofPopStyle();
+}
+
+void ofxVolumetrics::drawLimits(float _size) {
+
+	ofVec3f pos= *planeCoords*sizeFactor;
+	float f = 1.001;
+	ofVec3f size = ofVec3f(_size, _size, 0);
+
+	ofPushStyle();
+	ofSetLineWidth(1);
+	ofSetColor(0,255,255);
+	ofNoFill();
+	
+	ofPushMatrix();
+		ofScale(cubeSize.x*f,cubeSize.y*f,cubeSize.z*f);
+	ofVec3f coronalPlane	= ofVec3f(0,0,planeCoords->z);
+	ofVec3f sagittalPlane	= ofVec3f(0,0,planeCoords->x);
+	ofVec3f axialPlane		= ofVec3f(0,0,planeCoords->y);
+	
+	coronalPlane		*= sizeFactor;
+	sagittalPlane		*= sizeFactor;
+	axialPlane			*= sizeFactor;
+
+	ofPushMatrix();
+		ofRotateY(90);
+		drawBox(sagittalPlane, size);
+	ofPopMatrix();
+		
+		ofScale(-1.,-1.,-1.);
+		drawBox(axialPlane, size);
+	
+		ofRotateX(90);
+		drawBox(coronalPlane, size);
+	
+	ofPopMatrix();
+	ofPopStyle();
+
+}
+
+void ofxVolumetrics::drawBox(const ofPoint& position, const ofPoint& size) {
+	ofDrawBox( position.x, position.y, position.z, size.x, size.y, size.z);
+}
+
+void ofxVolumetrics::drawAxis(float size) {
+	ofPushStyle();
+	ofPushMatrix();
+
+	ofSetLineWidth(1);
+	ofSetColor(0,255,255);
+	
+	ofVec3f pos= *planeCoords*sizeFactor;
+	
+	ofScale(cubeSize.x,cubeSize.y,cubeSize.z);
+	ofRotateY(90);
+
+	// draw x axis
+//	ofLine(pos.y - size, pos.z, pos.x, pos.y + size, pos.z, pos.x);
+	// draw y axis
+	ofLine(pos.y, pos.z - size, pos.x, pos.y, pos.z + size, pos.x);
+	// draw z axis
+	ofLine(pos.y, pos.z, pos.x - size, pos.y, pos.z, pos.x + size);
+
+	ofPopMatrix();
+	ofPopStyle();
+}
+
+
 void ofxVolumetrics::updateRenderDimentions()
 {
-	ofLog(OF_LOG_NOTICE, "update render");
+	ofLog(OF_LOG_VERBOSE, "update render");
     if((int)(ofGetWidth() * quality.x) != renderWidth)
     {
         renderWidth = ofGetWidth()*quality.x;
@@ -336,6 +480,10 @@ void ofxVolumetrics::setVolumeTextureFilterMode(GLint filterMode) {
     volumeTexture.unbind();
 }
 
+void ofxVolumetrics::setPlanes(ofVec3f* _planes)
+{
+    planeCoords	= _planes;
+}
 
 
 

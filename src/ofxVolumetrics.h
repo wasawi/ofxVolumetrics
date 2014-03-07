@@ -36,7 +36,6 @@ public:
     float getZQuality();
     float getThreshold();
     float getDensity();
-	
 	float getDithering();
 
 	// setters
@@ -50,12 +49,23 @@ public:
 	void setElevation(float elev);
 	void setAzimuth(float azi);
 	void setClipDepth(float depth);
+	void setCoronalPlane(float f);
+	void setSagittalPlane(float f);
+	void setAxialPlane(float f);
+	
+	void setPlanes(ofVec3f* _planes);
 	
 protected:
 private:
     void drawRGBCube();
     void updateRenderDimentions();
-
+	void drawSlices(float size);
+	void drawSphere(float size);
+	void drawCube(float size);
+	void drawAxis(float size);
+	void drawLimits(float size);
+	void drawBox(const ofPoint& position, const ofPoint& size);
+	
     ofFbo fboRender;
     ofShader volumeShader;
     ofxTexture3d volumeTexture;
@@ -78,6 +88,13 @@ private:
 	float elevation;
 	float azimuth;
 	
+	float sizeFactor;
+	
+	ofVec3f cubeSize;
+	ofVec3f cubePos;
+	
+	ofVec3f *planeCoords;
+	ofRectangle plane;
 };
 
 
