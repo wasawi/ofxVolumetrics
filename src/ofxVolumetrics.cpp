@@ -88,7 +88,7 @@ ofxVolumetrics::~ofxVolumetrics()
     destroy();
 }
 
-void ofxVolumetrics::setup(int w, int h, int d, ofVec3f voxelSize, bool usePowerOfTwoTexSize)
+void ofxVolumetrics::setup(int w, int h, int d, ofVec3f voxelSize, bool usePowerOfTwoTexSize, ofCamera* _cam)
 {
 	GLuint clearErrors = glGetError(); // FIXING GUI ERROR, https://github.com/openframeworks/openFrameworks/issues/1515
     volumeShader.load("shaders/ofxVolumetrics");
@@ -98,6 +98,7 @@ void ofxVolumetrics::setup(int w, int h, int d, ofVec3f voxelSize, bool usePower
     fboRender.allocate(w, h, GL_RGBA);
     volumeTexture.allocate(w, h, d, GL_LUMINANCE);
     voxelRatio = voxelSize;
+	cam	= _cam;
 	
     bIsInitialized = true;
 	
@@ -116,6 +117,7 @@ void ofxVolumetrics::updateVolumeData(unsigned char * data, int w, int h, int d,
     volumeTexture.loadData(data, w, h, d, xOffset, yOffset, zOffset, GL_LUMINANCE);
 }
 
+/*
 void ofxVolumetrics::update(float x, float y, float z, float size, int zTexOffset)
 {
     ofVec3f volumeSize = voxelRatio * ofVec3f(volWidth,volHeight,volDepth);
@@ -124,43 +126,71 @@ void ofxVolumetrics::update(float x, float y, float z, float size, int zTexOffse
 
     drawVolume(x, y, z, volumeSize.x, volumeSize.y, volumeSize.z, zTexOffset);
 }
+*/
 
-void ofxVolumetrics::drawVolume(float x, float y, float z, float w, float h, float d, int zTexOffset)
+void ofxVolumetrics::updateVolume(ofVec3f& volPos, ofVec3f& volSize, int zTexOffset)
 {
 //	updateRenderDimentions();
-	cubeSize = ofVec3f(w, h, d);
-	
-	GLfloat modl[16], proj[16];
-//	modl= cam. getmatrix //////// we need to try to get the camera from the scene instead of loading gl matrices.
-	glGetFloatv( GL_MODELVIEW_MATRIX, modl);
-	glGetFloatv(GL_PROJECTION_MATRIX, proj);
-	GLint color[4];
-	glGetIntegerv(GL_CURRENT_COLOR, color);
-	
-    ofVec3f scale,t;
-    ofQuaternion a,b;
-    ofMatrix4x4(modl).decompose(t, a, scale, b);
-	
-    GLint cull_mode;
-    glGetIntegerv(GL_FRONT_FACE, &cull_mode);
-    GLint cull_mode_fbo = (scale.x * scale.y * scale.z) > 0 ? GL_CCW : GL_CW;
+	cubeSize = volSize;
 
-	// This allows us to draw a cube around the fbo texture
+	// This allows us to draw the slices around the fbo texture
 	ofEnableDepthTest();
-	
 	/* raycasting pass */
     fboRender.begin();
     volumeShader.begin();
     ofClear(0);
 
+//--------------------------------------------------------------
+	// get the view from Opengl matrix
+/*
+	 GLfloat modl[16], proj[16];
+	 //	modl= cam. getmatrix //////// we need to try to get the camera from the scene instead of loading gl matrices.
+	 glGetFloatv( GL_MODELVIEW_MATRIX, modl);
+	 glGetFloatv(GL_PROJECTION_MATRIX, proj);
+	 
+	 GLint color[4];
+	 glGetIntegerv(GL_CURRENT_COLOR, color);
+	 
+	 ofVec3f scale,t;
+	 ofQuaternion a,b;
+	 ofMatrix4x4(modl).decompose(t, a, scale, b);
+	 
+	 GLint cull_mode;
+	 glGetIntegerv(GL_FRONT_FACE, &cull_mode);
+	 GLint cull_mode_fbo = (scale.x * scale.y * scale.z) > 0 ? GL_CCW : GL_CW;
+
+
     //load matricies from outside the FBO
-//    glMatrixMode(GL_PROJECTION);
+    glMatrixMode(GL_PROJECTION);
     glLoadMatrixf(proj);
     glMatrixMode(GL_MODELVIEW);
     glLoadMatrixf(modl);
+*/
+//--------------------------------------------------------------
+	// get the view from the current camera
+	ofMatrix4x4 modelView;
+	ofMatrix4x4 modelViewProjection;
+	
+	modelView = cam->getModelViewMatrix();
+	modelViewProjection= cam->getModelViewProjectionMatrix();
+	
+    ofVec3f scale,t;
+    ofQuaternion a,b;
+    GLint cull_mode;
+	modelView= cam->getModelViewMatrix();
+	modelView.decompose(t, a, scale, b);
+	glGetIntegerv(GL_FRONT_FACE, &cull_mode);
+    GLint cull_mode_fbo = (scale.x * scale.y * scale.z) > 0 ? GL_CCW : GL_CW;
 
+//	ofSetMatrixMode(OF_MATRIX_PROJECTION);
+//	ofLoadMatrix( modelViewProjection );
+	ofSetMatrixMode(OF_MATRIX_MODELVIEW);
+	ofLoadMatrix( modelView );
+
+//--------------------------------------------------------------
+	
 	ofPushView();
-    ofTranslate(x - cubeSize.x/2, y - cubeSize.y/2, z - cubeSize.z/2);
+    ofTranslate(volPos.x - cubeSize.x/2, volPos.y - cubeSize.y/2, volPos.z - cubeSize.z/2);
     ofScale(cubeSize.x,cubeSize.y,cubeSize.z);
 
     //pass parameters to the shader
@@ -168,8 +198,8 @@ void ofxVolumetrics::drawVolume(float x, float y, float z, float w, float h, flo
     volumeTexture.bind();
     volumeShader.setUniform1i("volume_tex", 1); // volume texture reference
     volumeTexture.unbind();
-	
 	glActiveTexture(GL_TEXTURE0);
+	
 	//dimensions of the volume texture
     volumeShader.setUniform3f("vol_d", (float)volWidth, (float)volHeight, (float)volDepth);
 	// dimensions of the background texture
@@ -188,11 +218,10 @@ void ofxVolumetrics::drawVolume(float x, float y, float z, float w, float h, flo
     glEnable(GL_CULL_FACE);
     glCullFace(GL_FRONT);
 	drawRGBCube();
-
-	
     glDisable(GL_CULL_FACE);
     glFrontFace(cull_mode);
 	volumeShader.end();
+	
 	ofPopView();
 
 //	drawCube(1.);
@@ -204,24 +233,22 @@ void ofxVolumetrics::drawVolume(float x, float y, float z, float w, float h, flo
 	ofDisableDepthTest();
 //	drawSphere();
 
-	
 	drawAxis(.01);
-
+	drawRayPlane();
 	
 	fboRender.end();
-
 }
 
 void ofxVolumetrics::draw(float x, float y, float w, float h){
-//	ofPushView();
-//	ofSetOrientation(OF_ORIENTATION_DEFAULT);
-// (float width, float height, float fov, float nearDist, float farDist)
-//	ofSetupScreenPerspective(ofGetWidth(), ofGetHeight(),90,0,1000);
+	ofPushView();
+		ofSetupScreenOrtho();//ofGetWidth(), ofGetHeight(),OF_ORIENTATION_DEFAULT,false,0,1000);
+		fboRender.draw(x,y, w, h);
+	ofPopView();
 
-	fboRender.draw(x,y, w, h);
-
+//	fboRender.draw(x,y, w, h);
 //	ofPopView();
-//	lutTexture.draw(300, 50, 0, 256, 20); // Draw the color mapping used on the screen, for viewer reference
+//	Draw the color mapping used on the screen, for viewer reference
+//	lutTexture.draw(300, 50, 0, 256, 20);
 }
 
 void ofxVolumetrics::drawRGBCube()
@@ -244,6 +271,43 @@ void ofxVolumetrics::drawRGBCube()
     glDisableClientState(GL_VERTEX_ARRAY);
 }
 
+void ofxVolumetrics::drawRayPlane()
+{
+	ofPushMatrix();
+//	ofScale(cubeSize.x,cubeSize.y,cubeSize.z);
+//	ofScale(-1.,-1.,-1.);
+	rayPlane->draw();
+	
+	//--------------------------------------------------------------
+	// the mouse position on screen coordinates
+	ofVec3f screenMouse = ofVec3f(ofGetMouseX(), ofGetMouseY(),0);
+	
+	// the mouse position on world coordinates
+	ofVec3f worldMouse = cam->screenToWorld(ofVec3f(screenMouse.x, screenMouse.y, 0.0f));
+	
+	// a point right in front of the mouse (used to get mouse direction)
+	ofVec3f worldMouseEnd = cam->screenToWorld(ofVec3f(screenMouse.x, screenMouse.y, 1.0f));
+	
+	// a vector representing the mouse direction (from camera to infinity?)
+	ofVec3f worldMouseTransmissionVector = worldMouseEnd - worldMouse;
+	
+	// set attributes to the ray
+	mouseRay.s = worldMouse;
+	mouseRay.t = worldMouseTransmissionVector;
+	
+	// check for intersection
+	ofVec3f		intersectionPosition;
+	bool doesIntersect = rayPlane->intersect(mouseRay, intersectionPosition);
+	
+	string label;
+	label = doesIntersect ? "hits" : "misses";
+	label += + " at world position " + ofToString(intersectionPosition);
+	cout << label<< endl;
+	//--------------------------------------------------------------
+	ofPopMatrix();
+}
+
+
 void ofxVolumetrics::drawCube(float size)
 {
 	float f = .9999;
@@ -257,11 +321,6 @@ void ofxVolumetrics::drawCube(float size)
 		ofDrawBox(0,0,0,size);
 	ofPopMatrix();
 	ofPopStyle();
-}
-
-void ofxVolumetrics::drawSphere(float size)
-{
-
 }
 
 void ofxVolumetrics::drawSlices(float size)
@@ -334,7 +393,6 @@ void ofxVolumetrics::drawLimits(float _size) {
 	
 	ofPopMatrix();
 	ofPopStyle();
-
 }
 
 void ofxVolumetrics::drawBox(const ofPoint& position, const ofPoint& size) {
@@ -378,7 +436,6 @@ void ofxVolumetrics::updateRenderDimentions()
 
 
 //************ getters ***************//
-
 
 bool ofxVolumetrics::isInitialized()
 {
@@ -480,9 +537,14 @@ void ofxVolumetrics::setVolumeTextureFilterMode(GLint filterMode) {
     volumeTexture.unbind();
 }
 
-void ofxVolumetrics::setPlanes(ofVec3f* _planes)
+void ofxVolumetrics::setSlices(ofVec3f* _planes)
 {
     planeCoords	= _planes;
+}
+
+void ofxVolumetrics::setRayPlane(ofPlane* _rayPlane)
+{
+    rayPlane = _rayPlane;
 }
 
 

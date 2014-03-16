@@ -11,17 +11,19 @@
 #include "ofShader.h"
 #include "ofxTexture3d.h"
 #include "ofxImageSequencePlayer.h"
+#include "ofxRay.h"
 
 class ofxVolumetrics{
 public:
 	
     ofxVolumetrics();
     virtual ~ofxVolumetrics();
-    void setup(int w, int h, int d, ofVec3f voxelSize, bool usePowerOfTwoTexSize=false);
+    void setup(int w, int h, int d, ofVec3f voxelSize, bool usePowerOfTwoTexSize, ofCamera* cam);
     void destroy();
     void updateVolumeData(unsigned char * data, int w, int h, int d, int xOffset, int yOffset, int zOffset);
     void update(float x, float y, float z, float size, int zTexOffset);
     void drawVolume(float x, float y, float z, float w, float h, float d, int zTexOffset);
+	void updateVolume(ofVec3f& volPos, ofVec3f& volSize, int zTexOffset);
 	void draw(float x, float y, float w, float h);
 	
 	// getters
@@ -53,7 +55,8 @@ public:
 	void setSagittalPlane(float f);
 	void setAxialPlane(float f);
 	
-	void setPlanes(ofVec3f* _planes);
+	void setSlices(ofVec3f* _planes);
+	void setRayPlane(ofPlane* _rayPlane);
 	
 protected:
 private:
@@ -65,6 +68,7 @@ private:
 	void drawAxis(float size);
 	void drawLimits(float size);
 	void drawBox(const ofPoint& position, const ofPoint& size);
+	void drawRayPlane();
 	
     ofFbo fboRender;
     ofShader volumeShader;
@@ -95,6 +99,11 @@ private:
 	
 	ofVec3f *planeCoords;
 	ofRectangle plane;
+	
+	//ofRay objects
+	ofCamera	*cam;
+	ofPlane		*rayPlane;
+	ofRay		mouseRay;
 };
 
 
