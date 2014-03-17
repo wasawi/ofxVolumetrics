@@ -210,7 +210,7 @@ void ofxVolumetrics::updateVolume(ofVec3f& volPos, ofVec3f& volSize, int zTexOff
     volumeShader.setUniform1f("density", density); // 0 ... 1
 	volumeShader.setUniform1f("dithering", dithering); // 0 ... 1
     volumeShader.setUniform1f("threshold", threshold);//(float)mouseX/(float)ofGetWidth());
-	volumeShader.setUniform1f("clipPlaneDepth", -sizeFactor*planeCoords->y);
+	volumeShader.setUniform1f("clipPlaneDepth", 1);//-sizeFactor*planeCoords->y);
 	volumeShader.setUniform1f("azimuth", 360*azimuth);
 	volumeShader.setUniform1f("elevation", 360*elevation);
 	
@@ -277,8 +277,8 @@ void ofxVolumetrics::drawRayPlane()
 //	ofScale(cubeSize.x,cubeSize.y,cubeSize.z);
 //	ofScale(-1.,-1.,-1.);
 	rayPlane->draw();
-	
-	//--------------------------------------------------------------
+
+/*	//--------------------------------------------------------------
 	// the mouse position on screen coordinates
 	ofVec3f screenMouse = ofVec3f(ofGetMouseX(), ofGetMouseY(),0);
 	
@@ -304,7 +304,8 @@ void ofxVolumetrics::drawRayPlane()
 	label += + " at world position " + ofToString(intersectionPosition);
 	cout << label<< endl;
 	//--------------------------------------------------------------
-	ofPopMatrix();
+*/
+ ofPopMatrix();
 }
 
 
