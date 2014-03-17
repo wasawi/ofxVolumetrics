@@ -33,8 +33,8 @@ public:
     bool linearFilter;
 
 	
-	float clipPlaneDepth;
 	float FBOq, Zq, thresh, density, dithering;
+	float clipPlaneDepth, azimuth, elevation;
 	
 	ofVec3f	volPos;
 	ofVec3f	volSize;

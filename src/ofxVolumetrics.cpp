@@ -132,6 +132,42 @@ void ofxVolumetrics::updateVolume(ofVec3f& volPos, ofVec3f& volSize, int zTexOff
 {
 //	updateRenderDimentions();
 	cubeSize = volSize;
+	
+//--------------------------------------------------------------
+/*	// get the view from Opengl matrix
+	GLfloat modl[16], proj[16];
+	//	modl= cam. getmatrix //////// we need to try to get the camera from the scene instead of loading gl matrices.
+	glGetFloatv( GL_MODELVIEW_MATRIX, modl);
+	glGetFloatv(GL_PROJECTION_MATRIX, proj);
+	
+	GLint color[4];
+	glGetIntegerv(GL_CURRENT_COLOR, color);
+	
+	ofVec3f scale,t;
+	ofQuaternion a,b;
+	ofMatrix4x4(modl).decompose(t, a, scale, b);
+	
+	GLint cull_mode;
+	glGetIntegerv(GL_FRONT_FACE, &cull_mode);
+	GLint cull_mode_fbo = (scale.x * scale.y * scale.z) > 0 ? GL_CCW : GL_CW;
+*/
+ //--------------------------------------------------------------
+	// get the view from the current camera
+	 ofMatrix4x4 modelView;
+	 ofMatrix4x4 modelViewProjection;
+	 
+	 modelView = cam->getModelViewMatrix();
+	 modelViewProjection= cam->getModelViewProjectionMatrix();
+	 
+	 ofVec3f scale,t;
+	 ofQuaternion a,b;
+	 modelView.decompose(t, a, scale, b);
+	
+	 GLint cull_mode;
+	 glGetIntegerv(GL_FRONT_FACE, &cull_mode);
+	 GLint cull_mode_fbo = (scale.x * scale.y * scale.z) > 0 ? GL_CCW : GL_CW;
+
+//--------------------------------------------------------------
 
 	// This allows us to draw the slices around the fbo texture
 	ofEnableDepthTest();
@@ -141,49 +177,16 @@ void ofxVolumetrics::updateVolume(ofVec3f& volPos, ofVec3f& volSize, int zTexOff
     ofClear(0);
 
 //--------------------------------------------------------------
-	// get the view from Opengl matrix
-/*
-	 GLfloat modl[16], proj[16];
-	 //	modl= cam. getmatrix //////// we need to try to get the camera from the scene instead of loading gl matrices.
-	 glGetFloatv( GL_MODELVIEW_MATRIX, modl);
-	 glGetFloatv(GL_PROJECTION_MATRIX, proj);
-	 
-	 GLint color[4];
-	 glGetIntegerv(GL_CURRENT_COLOR, color);
-	 
-	 ofVec3f scale,t;
-	 ofQuaternion a,b;
-	 ofMatrix4x4(modl).decompose(t, a, scale, b);
-	 
-	 GLint cull_mode;
-	 glGetIntegerv(GL_FRONT_FACE, &cull_mode);
-	 GLint cull_mode_fbo = (scale.x * scale.y * scale.z) > 0 ? GL_CCW : GL_CW;
-
-
-    //load matricies from outside the FBO
+/*    //load matricies from outside the FBO
     glMatrixMode(GL_PROJECTION);
     glLoadMatrixf(proj);
     glMatrixMode(GL_MODELVIEW);
     glLoadMatrixf(modl);
 */
 //--------------------------------------------------------------
-	// get the view from the current camera
-	ofMatrix4x4 modelView;
-	ofMatrix4x4 modelViewProjection;
-	
-	modelView = cam->getModelViewMatrix();
-	modelViewProjection= cam->getModelViewProjectionMatrix();
-	
-    ofVec3f scale,t;
-    ofQuaternion a,b;
-    GLint cull_mode;
-	modelView= cam->getModelViewMatrix();
-	modelView.decompose(t, a, scale, b);
-	glGetIntegerv(GL_FRONT_FACE, &cull_mode);
-    GLint cull_mode_fbo = (scale.x * scale.y * scale.z) > 0 ? GL_CCW : GL_CW;
 
-//	ofSetMatrixMode(OF_MATRIX_PROJECTION);
-//	ofLoadMatrix( modelViewProjection );
+	ofSetMatrixMode(OF_MATRIX_PROJECTION);
+	ofLoadMatrix( modelViewProjection );
 	ofSetMatrixMode(OF_MATRIX_MODELVIEW);
 	ofLoadMatrix( modelView );
 
@@ -210,7 +213,7 @@ void ofxVolumetrics::updateVolume(ofVec3f& volPos, ofVec3f& volSize, int zTexOff
     volumeShader.setUniform1f("density", density); // 0 ... 1
 	volumeShader.setUniform1f("dithering", dithering); // 0 ... 1
     volumeShader.setUniform1f("threshold", threshold);//(float)mouseX/(float)ofGetWidth());
-	volumeShader.setUniform1f("clipPlaneDepth", 1);//-sizeFactor*planeCoords->y);
+	volumeShader.setUniform1f("clipPlaneDepth", -sizeFactor*planeCoords->y);
 	volumeShader.setUniform1f("azimuth", 360*azimuth);
 	volumeShader.setUniform1f("elevation", 360*elevation);
 	
@@ -278,7 +281,7 @@ void ofxVolumetrics::drawRayPlane()
 //	ofScale(-1.,-1.,-1.);
 	rayPlane->draw();
 
-/*	//--------------------------------------------------------------
+	//--------------------------------------------------------------
 	// the mouse position on screen coordinates
 	ofVec3f screenMouse = ofVec3f(ofGetMouseX(), ofGetMouseY(),0);
 	
@@ -304,7 +307,7 @@ void ofxVolumetrics::drawRayPlane()
 	label += + " at world position " + ofToString(intersectionPosition);
 	cout << label<< endl;
 	//--------------------------------------------------------------
-*/
+
  ofPopMatrix();
 }
 

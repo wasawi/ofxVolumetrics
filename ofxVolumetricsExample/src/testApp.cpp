@@ -32,13 +32,17 @@ void testApp::initVolume()
 	rayPlane.setUp(ofVec3f(0.0f, 1.0f, 0.0f));
 	rayPlane.setInfinite(false);
 
-	
+	// shader
 	FBOq		= 1;
 	Zq			= 2;
 	thresh		= 0;
 	density		= 1;
 	dithering	= 0;
 	
+	// slice
+	clipPlaneDepth	= 0;
+	azimuth			= 0;
+	elevation		= -.50;
 	
 	imageSequence.init("volumes/Colin27T1_tight/IM-0001-0",3,".tif", 0);
 	//	imageSequence.init("volumes/talairach_nii/IM-0001-0",3,".tif", 0);
@@ -90,6 +94,8 @@ void testApp::initVolume()
 	myVolume.setSlices(&uiClamp);
 	myVolume.setRayPlane(&rayPlane);
 
+	myVolume.setClipDepth(clipPlaneDepth);
+	myVolume.setElevation(elevation);
 }
 
 //--------------------------------------------------------------
@@ -116,15 +122,19 @@ void testApp::draw()
 void testApp::drawLabels()
 {
     ofSetColor(0,0,0,64);
-    ofRect(0,0,270,90);
+    ofRect(0,0,270,190);
     ofSetColor(255,255,255,255);
 	
     ofDrawBitmapString("volume dimensions: " + ofToString(myVolume.getVolumeWidth()) + "x" + ofToString(myVolume.getVolumeHeight()) + "x" + ofToString(myVolume.getVolumeDepth()) + "\n" +
                        "FBO quality (q/Q): " + ofToString(myVolume.getRenderWidth()) + "x" + ofToString(myVolume.getRenderHeight()) + "\n" +
-                       "Z quality (z/Z):   " + ofToString(myVolume.getZQuality()) + "\n" +
-                       "Threshold (t/T):   " + ofToString(myVolume.getThreshold()) + "\n" +
-                       "Density (d/D):     " + ofToString(myVolume.getDensity()) + "\n" +
-                       "Filter mode (l/n): " + (linearFilter?"linear":"nearest"),20,20);
+                       "Z quality (z/Z):	" + ofToString(myVolume.getZQuality()) + "\n" +
+                       "Threshold (t/T):	" + ofToString(myVolume.getThreshold()) + "\n" +
+                       "Density (d/D):		" + ofToString(myVolume.getDensity()) + "\n" +
+                       "Filter mode (l/n):  " + (linearFilter?"linear":"nearest") + "\n" +
+					   "clipPlaneDepth:     " + ofToString(clipPlaneDepth) + "\n" +
+					   "azimuth:            " + ofToString(azimuth) + "\n" +
+					   "elevation:          " + ofToString(elevation)
+					   ,20,20);
 	
 
 }
@@ -135,50 +145,79 @@ void testApp::keyPressed(int key)
 
     switch(key)
     {
-    case 't':
-        myVolume.setThreshold(myVolume.getThreshold()-0.01);
-        break;
-    case 'T':
-        myVolume.setThreshold(myVolume.getThreshold()+0.01);
-        break;
-    case 'd':
-        myVolume.setDensity(myVolume.getDensity()-0.01);
-        break;
-    case 'D':
-        myVolume.setDensity(myVolume.getDensity()+0.01);
-        break;
-    case 'q':
-        myVolume.setXyQuality(myVolume.getXyQuality()-0.01);
-        break;
-    case 'Q':
-        myVolume.setXyQuality(myVolume.getXyQuality()+0.01);
-        break;
-    case 'z':
-        myVolume.setZQuality(myVolume.getZQuality()-0.01);
-        break;
-    case 'Z':
-        myVolume.setZQuality(myVolume.getZQuality()+0.01);
-        break;
-    case 'l':
-        myVolume.setVolumeTextureFilterMode(GL_LINEAR);
-        linearFilter = true;
-        break;
-    case 'n':
-        myVolume.setVolumeTextureFilterMode(GL_NEAREST);
-        linearFilter = false;
-        break;
-    case OF_KEY_UP:
-        cam.getTarget().boom(-5);
-        break;
-    case OF_KEY_DOWN:
-        cam.getTarget().boom(5);
-        break;
-    case OF_KEY_LEFT:
-        cam.getTarget().truck(-5);
-        break;
-    case OF_KEY_RIGHT:
-        cam.getTarget().truck(5);
-        break;
+		case 't':
+			myVolume.setThreshold(myVolume.getThreshold()-0.01);
+			break;
+		case 'T':
+			myVolume.setThreshold(myVolume.getThreshold()+0.01);
+			break;
+		case 'd':
+			myVolume.setDensity(myVolume.getDensity()-0.01);
+			break;
+		case 'D':
+			myVolume.setDensity(myVolume.getDensity()+0.01);
+			break;
+		case 'q':
+			myVolume.setXyQuality(myVolume.getXyQuality()-0.01);
+			break;
+		case 'Q':
+			myVolume.setXyQuality(myVolume.getXyQuality()+0.01);
+			break;
+		case 'z':
+			myVolume.setZQuality(myVolume.getZQuality()-0.01);
+			break;
+		case 'Z':
+			myVolume.setZQuality(myVolume.getZQuality()+0.01);
+			break;
+		case 'l':
+			myVolume.setVolumeTextureFilterMode(GL_LINEAR);
+			linearFilter = true;
+			break;
+				
+		case 'I':
+			clipPlaneDepth += 0.01;
+			myVolume.setClipDepth(clipPlaneDepth);
+			break;
+		case 'i':
+			clipPlaneDepth -= 0.01;
+			myVolume.setClipDepth(clipPlaneDepth);
+			break;
+
+		case 'O':
+			elevation += 0.01;
+			myVolume.setElevation(elevation);
+			break;
+		case 'o':
+			elevation -= 0.01;
+			myVolume.setElevation(elevation);
+			break;
+				
+		case 'P':
+			azimuth += 0.01;
+			myVolume.setAzimuth(azimuth);
+			break;
+		case 'p':
+			azimuth -= 0.01;
+			myVolume.setAzimuth(azimuth);
+			break;
+							
+			
+		case 'n':
+			myVolume.setVolumeTextureFilterMode(GL_NEAREST);
+			linearFilter = false;
+			break;
+		case OF_KEY_UP:
+			cam.getTarget().boom(-5);
+			break;
+		case OF_KEY_DOWN:
+			cam.getTarget().boom(5);
+			break;
+		case OF_KEY_LEFT:
+			cam.getTarget().truck(-5);
+			break;
+		case OF_KEY_RIGHT:
+			cam.getTarget().truck(5);
+			break;
     }
 
 }
