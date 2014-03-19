@@ -114,7 +114,7 @@ void testApp::draw()
     cam.begin();
     myVolume.updateVolume(volPos, volSize, 0);
     cam.end();
-	myVolume.draw(0, 0, ofGetWidth(), ofGetHeight());
+	myVolume.draw(0, ofGetHeight(), ofGetWidth(), -ofGetHeight());
 	
 	drawLabels();
 }

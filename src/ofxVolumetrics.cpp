@@ -15,7 +15,7 @@ ofxVolumetrics::ofxVolumetrics()
 	
 	cubeSize		= ofVec3f(1, 1, 1);
 	cubePos			= ofVec3f(0, 0, 0);
-	bCameraView		= true;
+	bCameraView		= false;
 	
     /* Front side */
     volNormals[0] = ofVec3f(0.0, 0.0, 1.0);
@@ -142,7 +142,6 @@ void ofxVolumetrics::updateVolume(ofVec3f& volPos, ofVec3f& volSize, int zTexOff
 	if (bCameraView){
 		
 		// get the view from the current camera
-//		cam->setScale(1,-1,1);
 		modelView = cam->getModelViewMatrix();
 		projection= cam->getProjectionMatrix();
 		glGetIntegerv(GL_CURRENT_COLOR, color);
@@ -180,8 +179,6 @@ void ofxVolumetrics::updateVolume(ofVec3f& volPos, ofVec3f& volSize, int zTexOff
 		//load matricies from outside the FBO
 		glMatrixMode(GL_PROJECTION);
 		glLoadMatrixf(proj);
-//		glScalef (-1.0, 1.0, 1.0);	// this will transform the projection as in camera
-//		gluPerspective(cam->getFov(), cam->getAspectRatio(), cam->getNearClip(), cam->getFarClip());
 		glMatrixMode(GL_MODELVIEW);
 		glLoadMatrixf(modl);
 	}
@@ -228,14 +225,14 @@ void ofxVolumetrics::updateVolume(ofVec3f& volPos, ofVec3f& volSize, int zTexOff
 	ofDisableSmoothing();
 //	drawSlices(1.011);
 	drawLimits(1.011);
-	
 	ofDisableDepthTest();
-//	drawSphere();
-
-	drawAxis(.01);
-	drawRayPlane();
 	
+	drawAxis(.01);
+//	drawSphere();
 	fboRender.end();
+
+	drawRayPlane();
+
 }
 
 void ofxVolumetrics::draw(float x, float y, float w, float h){
@@ -267,31 +264,18 @@ void ofxVolumetrics::drawRGBCube()
     glDisableClientState(GL_TEXTURE_COORD_ARRAY);
     glDisableClientState(GL_VERTEX_ARRAY);
 }
-
+//--------------------------------------------------------------
 void ofxVolumetrics::drawRayPlane()
 {
-	ofPushMatrix();
-	// if you transform the shader you will need to transform the camera like so
-//	cam->setVFlip(true);
-	
 	rayPlane->setCenter(ofVec3f(0,0,planeCoords->y)*cubeSize*-.5);
 	rayPlane->setScale(cubeSize*.5);
 	rayPlane->draw();
 	
 	//--------------------------------------------------------------
-	// the mouse position on screen coordinates
 	ofVec3f screenMouse = ofVec3f(ofGetMouseX(), ofGetMouseY(),0);
-	
-	// the mouse position on world coordinates
 	ofVec3f worldMouse = cam->screenToWorld(ofVec3f(screenMouse.x, screenMouse.y, 0.0f));
-	
-	// a point right in front of the mouse (used to get mouse direction)
 	ofVec3f worldMouseEnd = cam->screenToWorld(ofVec3f(screenMouse.x, screenMouse.y, 1.0f));
-	
-	// a vector representing the mouse direction (from camera to infinity?)
 	ofVec3f worldMouseTransmissionVector = worldMouseEnd - worldMouse;
-	
-	// set attributes to the ray
 	mouseRay.s = worldMouse;
 	mouseRay.t = worldMouseTransmissionVector;
 	
@@ -299,16 +283,15 @@ void ofxVolumetrics::drawRayPlane()
 	ofVec3f		intersectionPosition;
 	bool doesIntersect = rayPlane->intersect(mouseRay, intersectionPosition);
 	
+	
+	
 	string label;
 	label = doesIntersect ? "hits" : "misses";
 	label += + " at world position " + ofToString(intersectionPosition);
 	cout << label<< endl;
-	//--------------------------------------------------------------
-	
-	ofPopMatrix();
 }
 
-
+//--------------------------------------------------------------
 void ofxVolumetrics::drawCube(float size)
 {
 	float f = .9999;
@@ -323,7 +306,7 @@ void ofxVolumetrics::drawCube(float size)
 	ofPopMatrix();
 	ofPopStyle();
 }
-
+//--------------------------------------------------------------
 void ofxVolumetrics::drawSlices(float size)
 {
 	float f = 1.011;
@@ -345,9 +328,10 @@ void ofxVolumetrics::drawSlices(float size)
 		ofSetPlaneResolution(2, 2);
 	ofPushMatrix();
 		ofScale(cubeSize.x*f,cubeSize.y*f,cubeSize.z*f);
+
 		ofPushMatrix();
-		ofRotateY(90);
-		ofDrawPlane(sagittalPlane, size, size);
+			ofRotateY(90);
+			ofDrawPlane(sagittalPlane, size, size);
 		ofPopMatrix();
 		
 		ofScale(-1.,-1.,-1.);
@@ -359,7 +343,7 @@ void ofxVolumetrics::drawSlices(float size)
 	ofPopMatrix();
 	ofPopStyle();
 }
-
+//--------------------------------------------------------------
 void ofxVolumetrics::drawLimits(float _size) {
 
 	ofVec3f pos= *planeCoords*sizeFactor;
@@ -384,6 +368,7 @@ void ofxVolumetrics::drawLimits(float _size) {
 	ofPushMatrix();
 		ofRotateY(90);
 		ofScale(-1.,-1.,-1.);
+	
 		drawBox(sagittalPlane, size);
 	ofPopMatrix();
 		
@@ -396,11 +381,11 @@ void ofxVolumetrics::drawLimits(float _size) {
 	ofPopMatrix();
 	ofPopStyle();
 }
-
+//--------------------------------------------------------------
 void ofxVolumetrics::drawBox(const ofPoint& position, const ofPoint& size) {
 	ofDrawBox( position.x, position.y, position.z, size.x, size.y, size.z);
 }
-
+//--------------------------------------------------------------
 void ofxVolumetrics::drawAxis(float size) {
 	ofPushStyle();
 	ofPushMatrix();
@@ -425,7 +410,7 @@ void ofxVolumetrics::drawAxis(float size) {
 	ofPopStyle();
 }
 
-
+//--------------------------------------------------------------
 void ofxVolumetrics::updateRenderDimentions()
 {
 	ofLog(OF_LOG_VERBOSE, "update render");
