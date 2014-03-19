@@ -15,6 +15,7 @@ ofxVolumetrics::ofxVolumetrics()
 	
 	cubeSize		= ofVec3f(1, 1, 1);
 	cubePos			= ofVec3f(0, 0, 0);
+	bCameraView		= true;
 	
     /* Front side */
     volNormals[0] = ofVec3f(0.0, 0.0, 1.0);
@@ -88,7 +89,7 @@ ofxVolumetrics::~ofxVolumetrics()
     destroy();
 }
 
-void ofxVolumetrics::setup(int w, int h, int d, ofVec3f voxelSize, bool usePowerOfTwoTexSize, ofCamera* _cam)
+void ofxVolumetrics::setup(int w, int h, int d, ofVec3f voxelSize, bool usePowerOfTwoTexSize, ofCamera& _cam)
 {
 	GLuint clearErrors = glGetError(); // FIXING GUI ERROR, https://github.com/openframeworks/openFrameworks/issues/1515
     volumeShader.load("shaders/ofxVolumetrics");
@@ -98,10 +99,9 @@ void ofxVolumetrics::setup(int w, int h, int d, ofVec3f voxelSize, bool usePower
     fboRender.allocate(w, h, GL_RGBA);
     volumeTexture.allocate(w, h, d, GL_LUMINANCE);
     voxelRatio = voxelSize;
-	cam	= _cam;
+	cam	= &_cam;
 	
     bIsInitialized = true;
-	
 }
 
 void ofxVolumetrics::destroy()
@@ -132,42 +132,34 @@ void ofxVolumetrics::updateVolume(ofVec3f& volPos, ofVec3f& volSize, int zTexOff
 {
 //	updateRenderDimentions();
 	cubeSize = volSize;
-	
-//--------------------------------------------------------------
-/*	// get the view from Opengl matrix
+	ofMatrix4x4 modelView;
+	ofMatrix4x4 projection;
 	GLfloat modl[16], proj[16];
-	//	modl= cam. getmatrix //////// we need to try to get the camera from the scene instead of loading gl matrices.
-	glGetFloatv( GL_MODELVIEW_MATRIX, modl);
-	glGetFloatv(GL_PROJECTION_MATRIX, proj);
-	
 	GLint color[4];
-	glGetIntegerv(GL_CURRENT_COLOR, color);
-	
 	ofVec3f scale,t;
 	ofQuaternion a,b;
-	ofMatrix4x4(modl).decompose(t, a, scale, b);
+	
+	if (bCameraView){
+		
+		// get the view from the current camera
+//		cam->setScale(1,-1,1);
+		modelView = cam->getModelViewMatrix();
+		projection= cam->getProjectionMatrix();
+		glGetIntegerv(GL_CURRENT_COLOR, color);
+		modelView.decompose(t, a, scale, b);
+		cout << ".";
+	}else{
+		
+		//*	// get the view from Opengl matrix
+		glGetFloatv( GL_MODELVIEW_MATRIX, modl);
+		glGetFloatv(GL_PROJECTION_MATRIX, proj);
+		glGetIntegerv(GL_CURRENT_COLOR, color);
+		ofMatrix4x4(modl).decompose(t, a, scale, b);
+	}
 	
 	GLint cull_mode;
 	glGetIntegerv(GL_FRONT_FACE, &cull_mode);
 	GLint cull_mode_fbo = (scale.x * scale.y * scale.z) > 0 ? GL_CCW : GL_CW;
-*/
- //--------------------------------------------------------------
-	// get the view from the current camera
-	 ofMatrix4x4 modelView;
-	 ofMatrix4x4 modelViewProjection;
-	 
-	 modelView = cam->getModelViewMatrix();
-	 modelViewProjection= cam->getModelViewProjectionMatrix();
-	 
-	 ofVec3f scale,t;
-	 ofQuaternion a,b;
-	 modelView.decompose(t, a, scale, b);
-	
-	 GLint cull_mode;
-	 glGetIntegerv(GL_FRONT_FACE, &cull_mode);
-	 GLint cull_mode_fbo = (scale.x * scale.y * scale.z) > 0 ? GL_CCW : GL_CW;
-
-//--------------------------------------------------------------
 
 	// This allows us to draw the slices around the fbo texture
 	ofEnableDepthTest();
@@ -176,26 +168,30 @@ void ofxVolumetrics::updateVolume(ofVec3f& volPos, ofVec3f& volSize, int zTexOff
     volumeShader.begin();
     ofClear(0);
 
-//--------------------------------------------------------------
-/*    //load matricies from outside the FBO
-    glMatrixMode(GL_PROJECTION);
-    glLoadMatrixf(proj);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadMatrixf(modl);
-*/
-//--------------------------------------------------------------
-
-	ofSetMatrixMode(OF_MATRIX_PROJECTION);
-	ofLoadMatrix( modelViewProjection );
-	ofSetMatrixMode(OF_MATRIX_MODELVIEW);
-	ofLoadMatrix( modelView );
-
-//--------------------------------------------------------------
-	
+	if (bCameraView){
+		
+		ofSetMatrixMode(OF_MATRIX_PROJECTION);
+		ofLoadMatrix( projection );
+		ofSetMatrixMode(OF_MATRIX_MODELVIEW);
+		ofLoadMatrix( modelView );
+		
+	}else{
+		
+		//load matricies from outside the FBO
+		glMatrixMode(GL_PROJECTION);
+		glLoadMatrixf(proj);
+//		glScalef (-1.0, 1.0, 1.0);	// this will transform the projection as in camera
+//		gluPerspective(cam->getFov(), cam->getAspectRatio(), cam->getNearClip(), cam->getFarClip());
+		glMatrixMode(GL_MODELVIEW);
+		glLoadMatrixf(modl);
+	}
+		
 	ofPushView();
-    ofTranslate(volPos.x - cubeSize.x/2, volPos.y - cubeSize.y/2, volPos.z - cubeSize.z/2);
+    glScalef (-1.0, 1.0, 1.0);	// draw the volume with correct map
+	ofTranslate(volPos.x - cubeSize.x/2, volPos.y - cubeSize.y/2, volPos.z - cubeSize.z/2);
     ofScale(cubeSize.x,cubeSize.y,cubeSize.z);
-
+	
+	
     //pass parameters to the shader
     glActiveTexture(GL_TEXTURE1);
     volumeTexture.bind();
@@ -247,9 +243,7 @@ void ofxVolumetrics::draw(float x, float y, float w, float h){
 		ofSetupScreenOrtho();//ofGetWidth(), ofGetHeight(),OF_ORIENTATION_DEFAULT,false,0,1000);
 		fboRender.draw(x,y, w, h);
 	ofPopView();
-
-//	fboRender.draw(x,y, w, h);
-//	ofPopView();
+	
 //	Draw the color mapping used on the screen, for viewer reference
 //	lutTexture.draw(300, 50, 0, 256, 20);
 }
@@ -277,10 +271,13 @@ void ofxVolumetrics::drawRGBCube()
 void ofxVolumetrics::drawRayPlane()
 {
 	ofPushMatrix();
-//	ofScale(cubeSize.x,cubeSize.y,cubeSize.z);
-//	ofScale(-1.,-1.,-1.);
+	// if you transform the shader you will need to transform the camera like so
+//	cam->setVFlip(true);
+	
+	rayPlane->setCenter(ofVec3f(0,0,planeCoords->y)*cubeSize*-.5);
+	rayPlane->setScale(cubeSize*.5);
 	rayPlane->draw();
-
+	
 	//--------------------------------------------------------------
 	// the mouse position on screen coordinates
 	ofVec3f screenMouse = ofVec3f(ofGetMouseX(), ofGetMouseY(),0);
@@ -307,8 +304,8 @@ void ofxVolumetrics::drawRayPlane()
 	label += + " at world position " + ofToString(intersectionPosition);
 	cout << label<< endl;
 	//--------------------------------------------------------------
-
- ofPopMatrix();
+	
+	ofPopMatrix();
 }
 
 
@@ -386,6 +383,7 @@ void ofxVolumetrics::drawLimits(float _size) {
 
 	ofPushMatrix();
 		ofRotateY(90);
+		ofScale(-1.,-1.,-1.);
 		drawBox(sagittalPlane, size);
 	ofPopMatrix();
 		
@@ -414,6 +412,7 @@ void ofxVolumetrics::drawAxis(float size) {
 	
 	ofScale(cubeSize.x,cubeSize.y,cubeSize.z);
 	ofRotateY(90);
+	ofScale(1.,1.,-1.);
 
 	// draw x axis
 //	ofLine(pos.y - size, pos.z, pos.x, pos.y + size, pos.z, pos.x);

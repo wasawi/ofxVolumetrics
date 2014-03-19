@@ -51,9 +51,10 @@ void testApp::initVolume()
 	volWidth	= imageSequence.getWidth();
     volHeight	= imageSequence.getHeight();
     volDepth	= imageSequence.getSequenceLength();
-	float size	= ofGetHeight();
-	ofVec3f volumeSize = voxelSize * ofVec3f(volWidth,volHeight,volDepth);
-    float maxDim = max(max(volumeSize.x, volumeSize.y), volumeSize.z);
+	
+		float size	= ofGetHeight();
+		ofVec3f volumeSize = voxelSize * ofVec3f(volWidth,volHeight,volDepth);
+		float maxDim = max(max(volumeSize.x, volumeSize.y), volumeSize.z);
     volSize = volumeSize * size / maxDim;
 	
 	
@@ -87,7 +88,7 @@ void testApp::initVolume()
     }
 	
 	// Init Volume
-    myVolume.setup(volWidth, volHeight, volDepth, voxelSize, true, &cam);
+    myVolume.setup(volWidth, volHeight, volDepth, voxelSize, true, cam);
 	myVolume.updateVolumeData(volumeData, volWidth, volHeight, volDepth, 0, 0, 0);
     myVolume.setRenderSettings(FBOq, Zq, density, thresh);
 	myVolume.setVolumeTextureFilterMode(GL_LINEAR);

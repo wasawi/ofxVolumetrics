@@ -18,7 +18,7 @@ public:
 	
     ofxVolumetrics();
     virtual ~ofxVolumetrics();
-    void setup(int w, int h, int d, ofVec3f voxelSize, bool usePowerOfTwoTexSize, ofCamera* cam);
+    void setup(int w, int h, int d, ofVec3f voxelSize, bool usePowerOfTwoTexSize, ofCamera& cam);
     void destroy();
     void updateVolumeData(unsigned char * data, int w, int h, int d, int xOffset, int yOffset, int zOffset);
     void update(float x, float y, float z, float size, int zTexOffset);
@@ -99,6 +99,8 @@ private:
 	
 	ofVec3f *planeCoords;
 	ofRectangle plane;
+	
+	bool bCameraView;
 	
 	//ofRay objects
 	ofCamera	*cam;
