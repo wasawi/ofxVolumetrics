@@ -18,7 +18,7 @@ public:
 	
     ofxVolumetrics();
     virtual ~ofxVolumetrics();
-    void setup(int w, int h, int d, ofVec3f voxelSize, bool usePowerOfTwoTexSize, ofCamera& cam);
+    void setup(int w, int h, int d, ofVec3f voxelSize, bool usePowerOfTwoTexSize);
     void destroy();
     void updateVolumeData(unsigned char * data, int w, int h, int d, int xOffset, int yOffset, int zOffset);
     void update(float x, float y, float z, float size, int zTexOffset);
@@ -57,7 +57,7 @@ public:
 	
 	void setSlices(ofVec3f* _planes);
 	void setRayPlane(ofPlane* _rayPlane);
-	bool getIntersection(ofVec3f &intersectionPosition);
+	bool getIntersection(ofCamera* cam,ofVec3f &intersectionPosition);
 	
 protected:
 private:
@@ -105,7 +105,6 @@ private:
 	bool bCameraView;
 	
 	//ofRay objects
-	ofCamera	*cam;
 	ofPlane		*rayPlane;
 	ofRay		mouseRay;
 };

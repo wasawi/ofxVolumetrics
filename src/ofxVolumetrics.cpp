@@ -89,7 +89,7 @@ ofxVolumetrics::~ofxVolumetrics()
     destroy();
 }
 
-void ofxVolumetrics::setup(int w, int h, int d, ofVec3f voxelSize, bool usePowerOfTwoTexSize, ofCamera& _cam)
+void ofxVolumetrics::setup(int w, int h, int d, ofVec3f voxelSize, bool usePowerOfTwoTexSize)
 {
 	GLuint clearErrors = glGetError(); // FIXING GUI ERROR, https://github.com/openframeworks/openFrameworks/issues/1515
     volumeShader.load("shaders/ofxVolumetrics");
@@ -99,7 +99,6 @@ void ofxVolumetrics::setup(int w, int h, int d, ofVec3f voxelSize, bool usePower
     fboRender.allocate(w, h, GL_RGBA);
     volumeTexture.allocate(w, h, d, GL_LUMINANCE);
     voxelRatio = voxelSize;
-	cam	= &_cam;
 	
     bIsInitialized = true;
 }
@@ -139,22 +138,11 @@ void ofxVolumetrics::updateVolume(ofVec3f& volPos, ofVec3f& volSize, int zTexOff
 	ofVec3f scale,t;
 	ofQuaternion a,b;
 	
-	if (bCameraView){
-		
-		// get the view from the current camera
-		modelView = cam->getModelViewMatrix();
-		projection= cam->getProjectionMatrix();
-		glGetIntegerv(GL_CURRENT_COLOR, color);
-		modelView.decompose(t, a, scale, b);
-		cout << ".";
-	}else{
-		
 		//*	// get the view from Opengl matrix
 		glGetFloatv( GL_MODELVIEW_MATRIX, modl);
 		glGetFloatv(GL_PROJECTION_MATRIX, proj);
 		glGetIntegerv(GL_CURRENT_COLOR, color);
 		ofMatrix4x4(modl).decompose(t, a, scale, b);
-	}
 	
 	GLint cull_mode;
 	glGetIntegerv(GL_FRONT_FACE, &cull_mode);
@@ -166,22 +154,12 @@ void ofxVolumetrics::updateVolume(ofVec3f& volPos, ofVec3f& volSize, int zTexOff
     fboRender.begin();
     volumeShader.begin();
     ofClear(0);
-
-	if (bCameraView){
-		
-		ofSetMatrixMode(OF_MATRIX_PROJECTION);
-		ofLoadMatrix( projection );
-		ofSetMatrixMode(OF_MATRIX_MODELVIEW);
-		ofLoadMatrix( modelView );
-		
-	}else{
 		
 		//load matricies from outside the FBO
 		glMatrixMode(GL_PROJECTION);
 		glLoadMatrixf(proj);
 		glMatrixMode(GL_MODELVIEW);
 		glLoadMatrixf(modl);
-	}
 		
 	ofPushView();
     glScalef (-1.0, 1.0, 1.0);	// draw the volume with correct map
@@ -508,7 +486,7 @@ void ofxVolumetrics::setRayPlane(ofPlane* _rayPlane)
 
 
 //--------------------------------------------------------------
-bool ofxVolumetrics::getIntersection(ofVec3f &intersectionPosition)
+bool ofxVolumetrics::getIntersection(ofCamera* cam,ofVec3f &intersectionPosition)
 {
 	rayPlane->setCenter(ofVec3f(0,0,planeCoords->y)*cubeSize*-.5);
 	rayPlane->setScale(cubeSize*.5);
