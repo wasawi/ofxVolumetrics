@@ -220,7 +220,7 @@ void ofxVolumetrics::updateVolume(ofVec3f& volPos, ofVec3f& volSize, int zTexOff
 	
 	ofPopView();
 
-//	drawCube(1.);
+	drawCube(1.);
 	ofDisableAntiAliasing();
 	ofDisableSmoothing();
 //	drawSlices(1.011);
@@ -230,9 +230,6 @@ void ofxVolumetrics::updateVolume(ofVec3f& volPos, ofVec3f& volSize, int zTexOff
 	drawAxis(.01);
 //	drawSphere();
 	fboRender.end();
-
-	drawRayPlane();
-
 }
 
 void ofxVolumetrics::draw(float x, float y, float w, float h){
@@ -263,32 +260,6 @@ void ofxVolumetrics::drawRGBCube()
     glDisableClientState(GL_NORMAL_ARRAY);
     glDisableClientState(GL_TEXTURE_COORD_ARRAY);
     glDisableClientState(GL_VERTEX_ARRAY);
-}
-//--------------------------------------------------------------
-void ofxVolumetrics::drawRayPlane()
-{
-	rayPlane->setCenter(ofVec3f(0,0,planeCoords->y)*cubeSize*-.5);
-	rayPlane->setScale(cubeSize*.5);
-	rayPlane->draw();
-	
-	//--------------------------------------------------------------
-	ofVec3f screenMouse = ofVec3f(ofGetMouseX(), ofGetMouseY(),0);
-	ofVec3f worldMouse = cam->screenToWorld(ofVec3f(screenMouse.x, screenMouse.y, 0.0f));
-	ofVec3f worldMouseEnd = cam->screenToWorld(ofVec3f(screenMouse.x, screenMouse.y, 1.0f));
-	ofVec3f worldMouseTransmissionVector = worldMouseEnd - worldMouse;
-	mouseRay.s = worldMouse;
-	mouseRay.t = worldMouseTransmissionVector;
-	
-	// check for intersection
-	ofVec3f		intersectionPosition;
-	bool doesIntersect = rayPlane->intersect(mouseRay, intersectionPosition);
-	
-	
-	
-	string label;
-	label = doesIntersect ? "hits" : "misses";
-	label += + " at world position " + ofToString(intersectionPosition);
-	cout << label<< endl;
 }
 
 //--------------------------------------------------------------
@@ -413,7 +384,7 @@ void ofxVolumetrics::drawAxis(float size) {
 //--------------------------------------------------------------
 void ofxVolumetrics::updateRenderDimentions()
 {
-	ofLog(OF_LOG_VERBOSE, "update render");
+	ofLogVerbose("Volumetrix") <<	"update render";
     if((int)(ofGetWidth() * quality.x) != renderWidth)
     {
         renderWidth = ofGetWidth()*quality.x;
@@ -535,6 +506,41 @@ void ofxVolumetrics::setRayPlane(ofPlane* _rayPlane)
     rayPlane = _rayPlane;
 }
 
+
+//--------------------------------------------------------------
+bool ofxVolumetrics::getIntersection(ofVec3f &intersectionPosition)
+{
+	rayPlane->setCenter(ofVec3f(0,0,planeCoords->y)*cubeSize*-.5);
+	rayPlane->setScale(cubeSize*.5);
+	rayPlane->draw();
+	
+	//--------------------------------------------------------------
+	ofVec3f screenMouse = ofVec3f(ofGetMouseX(), ofGetMouseY(),0);
+	ofVec3f worldMouse = cam->screenToWorld(ofVec3f(screenMouse.x, screenMouse.y, 0.0f));
+	ofVec3f worldMouseEnd = cam->screenToWorld(ofVec3f(screenMouse.x, screenMouse.y, 1.0f));
+	ofVec3f worldMouseTransmissionVector = worldMouseEnd - worldMouse;
+	mouseRay.s = worldMouse;
+	mouseRay.t = worldMouseTransmissionVector;
+	
+	// check for intersection
+	bool doesIntersect = rayPlane->intersect(mouseRay, intersectionPosition);
+	//--------------------------------------------------------------
+	
+	// get object space position
+	intersectionPosition /= cubeSize * .5;
+
+	if (doesIntersect) {
+	planeCoords->x= -intersectionPosition.x;
+//	planeCoords->y= -intersectionPosition.y;
+	planeCoords->z= intersectionPosition.y;
+	}
+	
+	string label = doesIntersect ? "hits" : "misses";
+	label += + " at " + ofToString(intersectionPosition);
+	ofLogVerbose("Volumetrix") <<	label;
+	
+	return doesIntersect;
+}
 
 
 

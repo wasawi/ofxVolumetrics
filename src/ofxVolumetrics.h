@@ -57,6 +57,7 @@ public:
 	
 	void setSlices(ofVec3f* _planes);
 	void setRayPlane(ofPlane* _rayPlane);
+	bool getIntersection(ofVec3f &intersectionPosition);
 	
 protected:
 private:
@@ -68,7 +69,6 @@ private:
 	void drawAxis(float size);
 	void drawLimits(float size);
 	void drawBox(const ofPoint& position, const ofPoint& size);
-	void drawRayPlane();
 	
     ofFbo fboRender;
     ofShader volumeShader;
@@ -96,10 +96,12 @@ private:
 	
 	ofVec3f cubeSize;
 	ofVec3f cubePos;
-	
+
+	//ofRay objects
 	ofVec3f *planeCoords;
 	ofRectangle plane;
 	
+	// debug
 	bool bCameraView;
 	
 	//ofRay objects
