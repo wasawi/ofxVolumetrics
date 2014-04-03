@@ -4,18 +4,19 @@
 
 ofxVolumetrics::ofxVolumetrics()
 {
-    quality = ofVec3f(1.0);
-    threshold = 1.0/255.0;
-    density = 1.0;
-    volWidth = renderWidth = 0;
-    volHeight = renderHeight = 0;
-    volDepth = 0;
-    bIsInitialized = false;
-	sizeFactor= .5;
+    quality			= ofVec3f(1.0);
+    threshold		= 1.0/255.0;
+    density			= 1.0;
+    volWidth		= renderWidth = 0;
+    volHeight		= renderHeight = 0;
+    volDepth		= 0;
+    bIsInitialized	= false;
+	sizeFactor		= .5;
 	
-	cubeSize		= ofVec3f(1, 1, 1);
-	cubePos			= ofVec3f(0, 0, 0);
-	bCameraView		= false;
+	volOffset		= ofVec3f(0);
+	voxelSize		= ofVec3f(1);
+	cubeSize		= ofVec3f(1);
+	cubePos			= ofVec3f(0);
 	
     /* Front side */
     volNormals[0] = ofVec3f(0.0, 0.0, 1.0);
@@ -89,16 +90,25 @@ ofxVolumetrics::~ofxVolumetrics()
     destroy();
 }
 
-void ofxVolumetrics::setup(int w, int h, int d, ofVec3f voxelSize, bool usePowerOfTwoTexSize)
+void ofxVolumetrics::setup(ofVec3f volSize, bool usePowerOfTwoTexSize)
 {
 	GLuint clearErrors = glGetError(); // FIXING GUI ERROR, https://github.com/openframeworks/openFrameworks/issues/1515
+	
+	float w = volSize.x;
+	float h = volSize.y;
+	float d = volSize.z;
+	
     volumeShader.load("shaders/ofxVolumetrics");
-    volWidth = renderWidth = w;
-    volHeight = renderHeight = h;
-    volDepth = d;
+    volWidth	= renderWidth = w;
+    volHeight	= renderHeight = h;
+    volDepth	= d;
     fboRender.allocate(w, h, GL_RGBA);
     volumeTexture.allocate(w, h, d, GL_LUMINANCE);
-    voxelRatio = voxelSize;
+	
+	float size	= ofGetHeight();
+	ofVec3f volumeSize = voxelSize * ofVec3f(volWidth,volHeight,volDepth);
+    float maxDim = max(max(volumeSize.x, volumeSize.y), volumeSize.z);
+    cubeSize = volumeSize * size / maxDim;
 	
     bIsInitialized = true;
 }
@@ -106,14 +116,14 @@ void ofxVolumetrics::setup(int w, int h, int d, ofVec3f voxelSize, bool usePower
 void ofxVolumetrics::destroy()
 {
     volumeShader.unload();
-//    fboBackground.destroy();
-//    fboRender.destroy();
     volumeTexture.clear();
+	//    fboBackground.destroy();
+	//    fboRender.destroy();
 }
 
-void ofxVolumetrics::updateVolumeData(unsigned char * data, int w, int h, int d, int xOffset, int yOffset, int zOffset)
+void ofxVolumetrics::setVolume(unsigned char * data)
 {
-    volumeTexture.loadData(data, w, h, d, xOffset, yOffset, zOffset, GL_LUMINANCE);
+    volumeTexture.loadData(data, volWidth, volHeight, volDepth, volOffset.x, volOffset.y, volOffset.z, GL_LUMINANCE);
 }
 
 /*
@@ -127,10 +137,10 @@ void ofxVolumetrics::update(float x, float y, float z, float size, int zTexOffse
 }
 */
 
-void ofxVolumetrics::updateVolume(ofVec3f& volPos, ofVec3f& volSize, int zTexOffset)
+void ofxVolumetrics::updateVolume()
 {
 //	updateRenderDimentions();
-	cubeSize = volSize;
+//	cubeSize = volSize;
 	ofMatrix4x4 modelView;
 	ofMatrix4x4 projection;
 	GLfloat modl[16], proj[16];
@@ -163,7 +173,7 @@ void ofxVolumetrics::updateVolume(ofVec3f& volPos, ofVec3f& volSize, int zTexOff
 		
 	ofPushView();
     glScalef (-1.0, 1.0, 1.0);	// draw the volume with correct map
-	ofTranslate(volPos.x - cubeSize.x/2, volPos.y - cubeSize.y/2, volPos.z - cubeSize.z/2);
+	ofTranslate(cubePos.x - cubeSize.x/2, cubePos.y - cubeSize.y/2, cubePos.z - cubeSize.z/2);
     ofScale(cubeSize.x,cubeSize.y,cubeSize.z);
 	
 	
@@ -179,7 +189,7 @@ void ofxVolumetrics::updateVolume(ofVec3f& volPos, ofVec3f& volSize, int zTexOff
 	// dimensions of the background texture
     volumeShader.setUniform2f("bg_d", (float)renderWidth, (float)renderHeight);
 	// used for animation so that we dont have to upload the entire volume every time
-    volumeShader.setUniform1f("zoffset", zTexOffset);
+//    volumeShader.setUniform1f("zoffset", zTexOffset);
     volumeShader.setUniform1f("quality", quality.z); // 0 ... 1
     volumeShader.setUniform1f("density", density); // 0 ... 1
 	volumeShader.setUniform1f("dithering", dithering); // 0 ... 1
@@ -213,7 +223,7 @@ void ofxVolumetrics::updateVolume(ofVec3f& volPos, ofVec3f& volSize, int zTexOff
 void ofxVolumetrics::draw(float x, float y, float w, float h){
 	ofPushView();
 		ofSetupScreenOrtho();//ofGetWidth(), ofGetHeight(),OF_ORIENTATION_DEFAULT,false,0,1000);
-		fboRender.draw(x,y, w, h);
+		fboRender.draw(x, y, w, h);
 	ofPopView();
 	
 //	Draw the color mapping used on the screen, for viewer reference
@@ -250,7 +260,7 @@ void ofxVolumetrics::drawCube(float size)
 		ofSetColor(120);
 		ofNoFill();
 	ofPushMatrix();
-		ofScale(cubeSize.x*f,cubeSize.y*f,cubeSize.z*f);
+		ofScale(cubeSize.x*f, cubeSize.y*f, cubeSize.z*f);
 		ofDrawBox(0,0,0,size);
 	ofPopMatrix();
 	ofPopStyle();
@@ -421,7 +431,18 @@ float ofxVolumetrics::getDithering()
 {
     return dithering;
 }
-
+ofVec3f ofxVolumetrics::getVolOffset(){
+	return volOffset;
+}
+ofVec3f ofxVolumetrics::getVoxelSize(){
+	return voxelSize;
+}
+ofVec3f ofxVolumetrics::getCubeSize(){
+	return cubeSize;
+}
+ofVec3f ofxVolumetrics::getCubePos(){
+	return cubePos;
+}
 
 //************ setters ***************//
 
@@ -483,7 +504,6 @@ void ofxVolumetrics::setRayPlane(ofPlane* _rayPlane)
 {
     rayPlane = _rayPlane;
 }
-
 
 //--------------------------------------------------------------
 bool ofxVolumetrics::getIntersection(ofCamera* cam,ofVec3f &intersectionPosition)

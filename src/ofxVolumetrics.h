@@ -18,13 +18,14 @@ public:
 	
     ofxVolumetrics();
     virtual ~ofxVolumetrics();
-    void setup(int w, int h, int d, ofVec3f voxelSize, bool usePowerOfTwoTexSize);
     void destroy();
-    void updateVolumeData(unsigned char * data, int w, int h, int d, int xOffset, int yOffset, int zOffset);
-    void update(float x, float y, float z, float size, int zTexOffset);
-    void drawVolume(float x, float y, float z, float w, float h, float d, int zTexOffset);
-	void updateVolume(ofVec3f& volPos, ofVec3f& volSize, int zTexOffset);
+    void setup(ofVec3f volSize, bool usePowerOfTwoTexSize);
+    void setVolume(unsigned char * data);
+	void updateVolume();
 	void draw(float x, float y, float w, float h);
+
+//    void update(float x, float y, float z, float size, int zTexOffset);
+//    void drawVolume(float x, float y, float z, float w, float h, float d, int zTexOffset);
 	
 	// getters
     bool isInitialized();
@@ -39,6 +40,11 @@ public:
     float getThreshold();
     float getDensity();
 	float getDithering();
+	
+	ofVec3f getVolOffset();
+	ofVec3f getVoxelSize();
+	ofVec3f getCubeSize();
+	ofVec3f getCubePos();
 
 	// setters
     void setXyQuality(float q);
@@ -76,16 +82,23 @@ private:
     //ofMesh volumeMesh; //unfortunately this only supports 2d texture coordinates at the moment.
     ofVec3f volVerts[24];
     ofVec3f volNormals[24];
-    ofVec3f voxelRatio;
-    bool bIsInitialized;
-    int volWidth, volHeight, volDepth;
-    int volWidthPOT, volHeightPOT, volDepthPOT;
-    bool bIsPowerOfTwo;
+//    ofVec3f voxelRatio; // renames to voxelSize
+
+
+	ofVec3f	volOffset;
+	ofVec3f voxelSize;
+	ofVec3f cubeSize;
+	ofVec3f cubePos;
+	
+    bool	bIsInitialized;
+    int		volWidth, volHeight, volDepth;
+    int		volWidthPOT, volHeightPOT, volDepthPOT;
+    bool	bIsPowerOfTwo;
 
     ofVec3f quality;
-    float threshold;
-    float density;
-    int renderWidth, renderHeight;
+    float	threshold;
+    float	density;
+    int		renderWidth, renderHeight;
 	
 	float dithering;
 	float clipPlaneDepth;
@@ -94,17 +107,9 @@ private:
 	
 	float sizeFactor;
 	
-	ofVec3f cubeSize;
-	ofVec3f cubePos;
-
 	//ofRay objects
 	ofVec3f *planeCoords;
 	ofRectangle plane;
-	
-	// debug
-	bool bCameraView;
-	
-	//ofRay objects
 	ofPlane		*rayPlane;
 	ofRay		mouseRay;
 };
