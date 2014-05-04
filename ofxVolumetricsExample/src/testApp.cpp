@@ -44,7 +44,7 @@ void testApp::setup()
     myVolume.setRenderSettings(1.0, 1.0, 0.75, 0.1);
 
     linearFilter = false;
-
+	
     cam.setDistance(1000);
     cam.enableMouseInput();
 }
@@ -69,13 +69,12 @@ void testApp::draw()
     ofRect(0,0,270,90);
     ofSetColor(255,255,255,255);
 
-    ofDrawBitmapString("volume dimensions: " + ofToString(myVolume.getVolumeWidth()) + "x" + ofToString(myVolume.getVolumeHeight()) + "x" + ofToString(myVolume.getVolumeDepth()) + "\n" +
+	if (blabel) ofDrawBitmapString("volume dimensions: " + ofToString(myVolume.getVolumeWidth()) + "x" + ofToString(myVolume.getVolumeHeight()) + "x" + ofToString(myVolume.getVolumeDepth()) + "\n" +
                        "FBO quality (q/Q): " + ofToString(myVolume.getRenderWidth()) + "x" + ofToString(myVolume.getRenderHeight()) + "\n" +
                        "Z quality (z/Z):   " + ofToString(myVolume.getZQuality()) + "\n" +
                        "Threshold (t/T):   " + ofToString(myVolume.getThreshold()) + "\n" +
                        "Density (d/D):     " + ofToString(myVolume.getDensity()) + "\n" +
                        "Filter mode (l/n): " + (linearFilter?"linear":"nearest"),20,20);
-
 }
 
 //--------------------------------------------------------------
@@ -84,7 +83,13 @@ void testApp::keyPressed(int key)
 
     switch(key)
     {
-    case 't':
+	case 'a':
+			setup();
+        break;
+	case 'h':
+			blabel=!blabel;
+        break;
+	case 't':
         myVolume.setThreshold(myVolume.getThreshold()-0.01);
         break;
     case 'T':

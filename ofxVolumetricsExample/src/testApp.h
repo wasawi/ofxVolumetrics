@@ -30,4 +30,6 @@ public:
     ofxImageSequencePlayer imageSequence;
     bool linearFilter;
 
+	
+	bool blabel;
 };
