@@ -40,7 +40,7 @@ void testApp::setup()
         }
     }
 
-    myVolume.setup(volWidth, volHeight, volDepth, ofVec3f(1,1,2),true);
+    myVolume.setup(volWidth, volHeight, volDepth, ofVec3f(1,1,1),true);
     myVolume.updateVolumeData(volumeData,volWidth,volHeight,volDepth,0,0,0);
     myVolume.setRenderSettings(1.0, 1.0, 0.75, 0.1);
 
@@ -87,7 +87,7 @@ void testApp::keyPressed(int key)
 	case 'a':
 			cout << "UPDATING VOLUME....\n";
 			cout << imageSequence.getWidth() <<"x"<<imageSequence.getHeight() <<"x"<<imageSequence.getSequenceLength() <<"\n";
-			myVolume.setup(volWidth, volHeight, volDepth, ofVec3f(1,1,2),true);
+//			myVolume.setup(volWidth, volHeight, volDepth, ofVec3f(1,1,2),true);
 			myVolume.updateVolumeData(volumeData,volWidth,volHeight,volDepth,0,0,0);
         break;
 	case 'h':
