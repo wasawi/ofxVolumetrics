@@ -9,7 +9,8 @@ void testApp::setup()
     background.loadImage("background.png");
     ofEnableBlendMode(OF_BLENDMODE_ALPHA);
 
-    imageSequence.init("volumes/head/cthead-8bit",3,".tif", 1);
+//    imageSequence.init("volumes/head/cthead-8bit",3,".tif", 1);
+    imageSequence.init(	"volumes/Colin27T1_tight/IM-0001-0",3,".tif", 1);
     volWidth = imageSequence.getWidth();
     volHeight = imageSequence.getHeight();
     volDepth = imageSequence.getSequenceLength();
@@ -84,7 +85,10 @@ void testApp::keyPressed(int key)
     switch(key)
     {
 	case 'a':
-			setup();
+			cout << "UPDATING VOLUME....\n";
+			cout << imageSequence.getWidth() <<"x"<<imageSequence.getHeight() <<"x"<<imageSequence.getSequenceLength() <<"\n";
+			myVolume.setup(volWidth, volHeight, volDepth, ofVec3f(1,1,2),true);
+			myVolume.updateVolumeData(volumeData,volWidth,volHeight,volDepth,0,0,0);
         break;
 	case 'h':
 			blabel=!blabel;

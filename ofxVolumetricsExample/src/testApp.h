@@ -33,3 +33,11 @@ public:
 	
 	bool blabel;
 };
+
+
+/*
+ if you update the volume by pressing 'a' everything is ok
+ if you draw labels with 'h' and then update volume with 'a'
+ then everything goes wrong..
+ 
+ */
