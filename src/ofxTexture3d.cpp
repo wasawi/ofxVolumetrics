@@ -11,6 +11,22 @@ ofxTexture3d::~ofxTexture3d()
     release(texData.textureID);
 }
 
+void ofxTexture3d::allocate(ofxIntPoint size, int internalGlDataType)
+{
+	allocate(size.x, size.y, size.z, internalGlDataType);
+}
+
+
+void ofxTexture3d::allocate(ofxPoint size, int internalGlDataType)
+{
+	allocate((int)size.x, (int)size.y, (int)size.z, internalGlDataType);
+}
+
+void ofxTexture3d::allocate(ofVec3f size, int internalGlDataType)
+{
+	allocate(size.x, size.y, size.z, internalGlDataType);
+}
+
 void ofxTexture3d::allocate(int w, int h, int d, int internalGlDataType)
 {
     texData.tex_w = w;
@@ -52,6 +68,14 @@ void ofxTexture3d::allocate(int w, int h, int d, int internalGlDataType)
     texData.bAllocated = true;
 }
 
+void ofxTexture3d::loadData(ofxVolume* vol, ofVec3f offset, int glFormat)
+{
+    loadData(vol->getVoxels(), (int)vol->getWidth(), (int)vol->getHeight(), (int)vol->getDepth(), offset.x, offset.y, offset.z, glFormat);
+}
+void ofxTexture3d::loadData(unsigned char * data, ofVec3f size, ofVec3f offset, int glFormat)
+{
+    loadData((void *)data, size.x, size.y, size.z, offset.x, offset.y, offset.z, glFormat);
+}
 void ofxTexture3d::loadData(unsigned char * data, int w, int h, int d, int xOffset, int yOffset, int zOffset, int glFormat)
 {
     loadData((void *)data, w, h, d, xOffset, yOffset, zOffset, glFormat);
@@ -91,7 +115,9 @@ void ofxTexture3d::loadData(void * data, int w, int h, int d, int xOffset, int y
         return;
     }
 
-
+	// bugFix: https://github.com/timscaffidi/ofxVolumetrics/issues/5#issuecomment-42230018
+	ofSetPixelStorei(w, 1, ofGetNumChannelsFromGLFormat(glFormat));
+	
     glEnable(texData.textureTarget);
     glBindTexture(texData.textureTarget, (GLuint) texData.textureID);
     glTexSubImage3D(texData.textureTarget, 0, xOffset, yOffset, zOffset, w, h, d, texData.glType, texData.pixelType, data);

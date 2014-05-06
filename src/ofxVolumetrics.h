@@ -11,23 +11,18 @@
 #include "ofShader.h"
 #include "ofxTexture3d.h"
 #include "ofxImageSequencePlayer.h"
-#include "ofxRay.h"
+#include "ofxVolume.h"
 
-class ofxVolumetrics{
+class ofxVolumetrics
+{
 public:
-	
     ofxVolumetrics();
     virtual ~ofxVolumetrics();
+	void setup(int w, int h, int d, ofVec3f voxelSize, bool usePowerOfTwoTexSize=false);
     void destroy();
-    void setup(ofVec3f volSize, bool usePowerOfTwoTexSize);
-    void setVolume(unsigned char * data);
-	void updateVolume();
-	void draw(float x, float y, float w, float h);
-
-//    void update(float x, float y, float z, float size, int zTexOffset);
-//    void drawVolume(float x, float y, float z, float w, float h, float d, int zTexOffset);
-	
-	// getters
+    void updateVolumeData(unsigned char * data, int w, int h, int d, int xOffset, int yOffset, int zOffset);
+    void drawVolume(float x, float y, float z, float size, int zTexOffset);
+    void drawVolume(float x, float y, float z, float w, float h, float d, int zTexOffset);
     bool isInitialized();
     int getVolumeWidth();
     int getVolumeHeight();
@@ -39,79 +34,82 @@ public:
     float getZQuality();
     float getThreshold();
     float getDensity();
-	float getDithering();
-	
-	ofVec3f getVolOffset();
-	ofVec3f getVoxelSize();
-	ofVec3f getCubeSize();
-	ofVec3f getCubePos();
-
-	// setters
     void setXyQuality(float q);
     void setZQuality(float q);
     void setThreshold(float t);
     void setDensity(float d);
     void setRenderSettings(float xyQuality, float zQuality, float dens, float thresh);
     void setVolumeTextureFilterMode(GLint filterMode);
-	void setDithering(float d);
-	void setElevation(float elev);
-	void setAzimuth(float azi);
-	void setClipDepth(float depth);
-	void setCoronalPlane(float f);
-	void setSagittalPlane(float f);
-	void setAxialPlane(float f);
 	
-	void setSlices(ofVec3f* _planes);
-	void setRayPlane(ofPlane* _rayPlane);
-	bool getIntersection(ofCamera* cam,ofVec3f &intersectionPosition);
+	//mine--------------------------------------------------------------
+	void setup(ofxVolume* _volume,
+			   ofVec3f _voxelSize = ofVec3f(1,1,1),
+			   bool usePowerOfTwoTexSize=false,
+			   GLint internalformat=GL_RGBA);
+	
+    void setVolume(ofxVolume* _volume,
+				   bool usePowerOfTwoTexSize=false,
+				   GLint internalformat=GL_RGBA);
+	
+    void setup(unsigned char * _data,
+			   ofVec3f _volSize,
+			   ofVec3f _voxelSize = ofVec3f(1,1,1),
+			   bool usePowerOfTwoTexSize=false,
+			   GLint internalformat=GL_RGBA);
+    void setVolume(unsigned char * _data,
+				   ofVec3f _volSize,
+				   bool usePowerOfTwoTexSize=false,
+				   GLint internalformat=GL_RGBA);
+	void update();
+    void draw(float x, float y, float w, float h);
+    void drawCube(float size);
+	
+	float getDithering();
+	
+    void setElevation(float elev);
+    void setAzimuth(float azi);
+	void setDithering(float d);
+	void setClipDepth(float depth);
+	
+	ofVec3f getVolOffset();
+    ofVec3f getVoxelRatio();
+    ofVec3f getCubeSize();
+    ofVec3f getCubePos();
+	//-mine
 	
 protected:
 private:
     void drawRGBCube();
     void updateRenderDimentions();
-	void drawSlices(float size);
-	void drawSphere(float size);
-	void drawCube(float size);
-	void drawAxis(float size);
-	void drawLimits(float size);
-	void drawBox(const ofPoint& position, const ofPoint& size);
+	void setCubeSize(ofVec3f _volumeSize, ofVec3f _voxelRatio);
+
+	//mine--------------------------------------------------------------
+	ofxVolume* vol;
+	ofVec3f volOffset;
+    ofVec3f cubeSize;
+    ofVec3f cubePos;
 	
-    ofFbo fboRender;
+	GLint filterMode;
+	float dithering;
+    float clipPlaneDepth;
+    float elevation;
+    float azimuth;
+	bool bNewCode;
+	//-mine
+    
+	ofFbo fboRender;
     ofShader volumeShader;
     ofxTexture3d volumeTexture;
     //ofMesh volumeMesh; //unfortunately this only supports 2d texture coordinates at the moment.
     ofVec3f volVerts[24];
     ofVec3f volNormals[24];
-//    ofVec3f voxelRatio; // renames to voxelSize
-
-
-	ofVec3f	volOffset;
-	ofVec3f voxelSize;
-	ofVec3f cubeSize;
-	ofVec3f cubePos;
-	
-    bool	bIsInitialized;
-    int		volWidth, volHeight, volDepth;
-    int		volWidthPOT, volHeightPOT, volDepthPOT;
-    bool	bIsPowerOfTwo;
-
+    ofVec3f voxelRatio;
+    bool bIsInitialized;
+    int volWidth, volHeight, volDepth;
+    int volWidthPOT, volHeightPOT, volDepthPOT;
+    bool bIsPowerOfTwo;
     ofVec3f quality;
-    float	threshold;
-    float	density;
-    int		renderWidth, renderHeight;
-	
-	float dithering;
-	float clipPlaneDepth;
-	float elevation;
-	float azimuth;
-	
-	float sizeFactor;
-	
-	//ofRay objects
-	ofVec3f *planeCoords;
-	ofRectangle plane;
-	ofPlane		*rayPlane;
-	ofRay		mouseRay;
+    float threshold;
+    float density;
+    int renderWidth, renderHeight;
 };
-
-

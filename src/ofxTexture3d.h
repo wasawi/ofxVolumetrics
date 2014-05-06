@@ -2,6 +2,8 @@
 
 #include "ofTexture.h"
 #include "ofMain.h"
+#include "ofxVolume.h"
+#include "ofxBox.h"
 
 class ofxTextureData3d : public ofTextureData
 {
@@ -12,7 +14,7 @@ class ofxTextureData3d : public ofTextureData
 		glTypeInternal = GL_RGB8;
 		textureTarget = GL_TEXTURE_3D;
 
-        glType = GL_RGB;
+        glType = GL_RGBA;
 		pixelType = GL_UNSIGNED_BYTE;
 
 		tex_t = 0;
@@ -41,7 +43,13 @@ class ofxTexture3d
     public:
         ofxTexture3d();
         virtual ~ofxTexture3d();
+		void allocate(ofxIntPoint size, int internalGlDataType);
+		void allocate(ofxPoint size, int internalGlDataType);
+		void allocate(ofVec3f size, int internalGlDataType);
         void allocate(int w, int h, int d, int internalGlDataType);
+	
+		void loadData(ofxVolume* vol, ofVec3f offset, int glFormat);
+		void loadData(unsigned char * data, ofVec3f size, ofVec3f offset, int glFormat);
         void loadData(unsigned char * data, int w, int h, int d, int xOffset, int yOffset, int zOffset, int glFormat);
         void loadData(float* data, int w, int h, int d, int xOffset, int yOffset, int zOffset, int glFormat);
         void loadData(unsigned short* data, int w, int h, int d, int xOffset, int yOffset, int zOffset, int glFormat);
@@ -51,6 +59,7 @@ class ofxTexture3d
         void bind();
         void unbind();
         void clear();
+	
         ofxTextureData3d getTextureData();
     protected:
         void loadData(void * data, int w, int h, int d, int xOffset, int yOffset, int zOffset, int glFormat);
