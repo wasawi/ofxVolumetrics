@@ -14,7 +14,6 @@ ofxVolumetrics::ofxVolumetrics()
     volHeight = renderHeight = 0;
     volDepth = 0;
     bIsInitialized	= false;
-	bNewCode		=false;
 
     /* Front side */
     volNormals[0] = ofVec3f(0.0, 0.0, 1.0);
@@ -105,11 +104,11 @@ void ofxVolumetrics::setup(ofxVolume* _volume, ofVec3f _voxelRatio, bool usePowe
     GLuint clearErrors = glGetError();
 	
 	// load shader in current project
-//	volumeShader.load("shaders/ofxVolumetrics");
+	volumeShader.load("shaders/ofxVolumetrics");
 
 	// load shader in addon
-//	volumeShader.load("../../../../ofxVolumetrics/src/shaders/ofxVolumetrics");
-	volumeShader.load("../../../../ofxVolumetrics/src/shaders/ofxVolumetricsOriginal");
+//	volumeShader.load("../../../../ofxVolumetrics/src/shaders/ofxVolumetrics");			// accepts Lumminance texture
+//	volumeShader.load("../../../../ofxVolumetrics/src/shaders/ofxVolumetricsOriginal"); // accepts RGBA texture only
 	
 	// load volume to 3dTexture
     setVolume(_volume, usePowerOfTwoTexSize, internalformat);
@@ -118,25 +117,22 @@ void ofxVolumetrics::setup(ofxVolume* _volume, ofVec3f _voxelRatio, bool usePowe
     updateRenderDimentions();
     
 	bIsInitialized = true;
-	bNewCode = true;
 }
 
 //--------------------------------------------------------------
 void ofxVolumetrics::setVolume(ofxVolume* _volume, bool usePowerOfTwoTexSize, GLint internalformat)
 {
-//    volumeTexture.clear();
     vol = _volume;
-	
-	volWidthPOT		= ofNextPow2(vol->getWidth());
-	volHeightPOT	= ofNextPow2(vol->getHeight());
-	volDepthPOT		= ofNextPow2(vol->getDepth());
-	
 	volWidth		= vol->getWidth();
 	volHeight		= vol->getHeight();
 	volDepth		= vol->getDepth();
 	
     bIsPowerOfTwo = usePowerOfTwoTexSize;
     if(bIsPowerOfTwo){
+		volWidthPOT		= ofNextPow2(vol->getWidth());
+		volHeightPOT	= ofNextPow2(vol->getHeight());
+		volDepthPOT		= ofNextPow2(vol->getDepth());
+		
 		ofLogVerbose() << "ofxVolumetrics::setVolume(): Using power of two texture size. Requested: "
 		<< volWidth		<<"x"<<	volHeight	<<"x"<<	volDepth <<". Actual: "
 		<< volWidthPOT	<<"x"<<	volHeightPOT<<"x"<< volDepthPOT <<".";
@@ -161,14 +157,15 @@ void ofxVolumetrics::setVolume(ofxVolume* _volume, bool usePowerOfTwoTexSize, GL
 		volumeTexture.loadData(vol, volOffset, internalformat);
 		setVolumeTextureFilterMode(filterMode);
     }else{
+		volWidthPOT		= volWidth;
+		volHeightPOT	= volHeight;
+		volDepthPOT		= volDepth;
+
 		ofLogVerbose() << "ofxVolumetrics::setup(): Requested: "
-		<< vol->getWidth() << "x" <<vol->getHeight()<<"x"<<vol->getDepth()<<".\n";
+		<< vol->getWidth() << "x" <<vol->getHeight()<<"x"<<vol->getDepth();
+
         volumeTexture.allocate(vol->getSize(), internalformat);
         volumeTexture.loadData(vol, volOffset, internalformat);
-
-		// old style loading
-//		volumeTexture.allocate(volWidth, volHeight, volDepth, GL_RGBA);
-//		volumeTexture.loadData(vol->getVoxels(), vol->getWidth(), vol->getHeight(), vol->getDepth(), 0, 0, 0, GL_RGBA);
 		setVolumeTextureFilterMode(filterMode);
     }
 }
@@ -245,15 +242,18 @@ void ofxVolumetrics::update()
     // dimensions of the background texture
     volumeShader.setUniform2f("bg_d", (float)renderWidth, (float)renderHeight);
     // used for animation so that we dont have to upload the entire volume every time
-	//    volumeShader.setUniform1f("zoffset", zTexOffset);
+	
     volumeShader.setUniform1f("quality", quality.z); // 0 ... 1
     volumeShader.setUniform1f("density", density); // 0 ... 1
     volumeShader.setUniform1f("dithering", dithering); // 0 ... 1
     volumeShader.setUniform1f("threshold", threshold);//(float)mouseX/(float)ofGetWidth());
 	volumeShader.setUniform1f("zoffset",0.0f); // used for animation so that we dont have to upload the entire volume every time
-//    volumeShader.setUniform1f("clipPlaneDepth", clipPlaneDepth);//-sizeFactor*planeCoords->y);
-//    volumeShader.setUniform1f("azimuth", 360*azimuth);
-//    volumeShader.setUniform1f("elevation", 360*elevation);
+
+	// cutting plane
+    //    volumeShader.setUniform1f("zoffset", zTexOffset);
+	volumeShader.setUniform1f("clipPlaneDepth", clipPlaneDepth);//-sizeFactor*planeCoords->y);
+    volumeShader.setUniform1f("azimuth", 360*azimuth);
+    volumeShader.setUniform1f("elevation", 360*elevation);
 	
     glFrontFace(cull_mode_fbo);
     glEnable(GL_CULL_FACE);
@@ -321,27 +321,15 @@ bool ofxVolumetrics::isInitialized()
 }
 int ofxVolumetrics::getVolumeWidth()
 {
-	if (bNewCode){
 	return vol->getWidth();
-	}else{
-	return volWidth;
-	}
 }
 int ofxVolumetrics::getVolumeHeight()
 {
-	if (bNewCode){
-		return vol->getHeight();
-	}else{
-		return volHeight;
-	}
+	return vol->getHeight();
 }
 int ofxVolumetrics::getVolumeDepth()
 {
-	if (bNewCode){
-		return vol->getHeight();
-	}else{
-		return volHeight;
-	}
+	return vol->getHeight();
 }
 int ofxVolumetrics::getRenderWidth()
 {
@@ -449,7 +437,7 @@ void ofxVolumetrics::setCubeSize(ofVec3f _volumeSize, ofVec3f _voxelRatio) {
 //--------------------------------------------------------------
 void ofxVolumetrics::drawCube(float size)
 {
-    float f = .99999;
+    float f = 1.001;
 	
     // Draw Cube
     ofPushStyle();

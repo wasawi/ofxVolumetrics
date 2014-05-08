@@ -91,12 +91,11 @@ private:
 	
 	GLint filterMode;
 	float dithering;
-    float clipPlaneDepth;
-    float elevation;
-    float azimuth;
+    float clipPlaneDepth, elevation, azimuth;
 	bool bNewCode;
 	//-mine
     
+	
 	ofFbo fboRender;
     ofShader volumeShader;
     ofxTexture3d volumeTexture;
