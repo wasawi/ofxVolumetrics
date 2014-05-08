@@ -4,6 +4,7 @@
 #include "ofMain.h"
 #include "ofxVolume.h"
 #include "ofxBox.h"
+#include "ofxPoint.h"
 
 class ofxTextureData3d : public ofTextureData
 {

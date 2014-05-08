@@ -2,7 +2,8 @@
 
 #include "ofxVolumetrics.h"
 #include "ofMain.h"
-#define STRINGIFY( A) #A
+
+//--------------------------------------------------------------
 ofxVolumetrics::ofxVolumetrics()
 {
     quality = ofVec3f(1.0);
@@ -82,12 +83,13 @@ ofxVolumetrics::ofxVolumetrics()
     volVerts[22] = ofVec3f(0.0, 1.0, 0.0);
     volVerts[23] = ofVec3f(1.0, 1.0, 0.0);
 }
-
+//--------------------------------------------------------------
 ofxVolumetrics::~ofxVolumetrics()
 {
     destroy();
 }
 
+//--------------------------------------------------------------
 void ofxVolumetrics::destroy()
 {
     volumeShader.unload();
@@ -96,187 +98,23 @@ void ofxVolumetrics::destroy()
     //    fboRender.destroy();
 }
 
-void ofxVolumetrics::setup(int w, int h, int d, ofVec3f _voxelRatio, bool usePowerOfTwoTexSize)
-{
-    string vertexShader = STRINGIFY(
-                                    varying vec3 cameraPosition;
-                                    void main()
-                                    {
-                                        gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-                                        gl_TexCoord[0] = gl_MultiTexCoord0; //poop
-                                        cameraPosition = (gl_ModelViewMatrixInverse * vec4(0.,0.,0.,1.)).xyz;
-                                    }); // END VERTEX SHADER STRINGIFY
-
-    string fragmentShader = STRINGIFY((#extension GL_ARB_texture_rectangle : enable \n
-                                        varying vec3 cameraPosition;
-
-                                        uniform sampler3D volume_tex;
-                                        uniform vec3 vol_d;
-                                        uniform vec3 vol_d_pot;
-                                        uniform vec2 bg_d;
-                                        uniform float zoffset;
-                                        uniform float quality;
-                                        uniform float threshold;
-                                        uniform float density;
-
-                                        struct Ray {
-                                            vec3 Origin;
-                                            vec3 Dir;
-                                        };
-
-                                        struct BoundingBox {
-                                            vec3 Min;
-                                            vec3 Max;
-                                        };
-
-                                        bool IntersectBox(Ray r, BoundingBox box, out float t0, out float t1)
-                                        {
-                                            vec3 invR = 1.0 / r.Dir;
-                                            vec3 tbot = invR * (box.Min-r.Origin);
-                                            vec3 ttop = invR * (box.Max-r.Origin);
-                                            vec3 tmin = min(ttop, tbot);
-                                            vec3 tmax = max(ttop, tbot);
-                                            vec2 t = max(tmin.xx, tmin.yz);
-                                            t0 = max(t.x, t.y);
-                                            t = min(tmax.xx, tmax.yz);
-                                            t1 = min(t.x, t.y);
-                                            return t0 <= t1;
-                                        }
-
-                                        void main()
-                                        {
-
-                                            vec3 minv = vec3(0.)+1./vol_d_pot;
-                                            vec3 maxv = (vol_d/vol_d_pot)-1./vol_d_pot;
-                                            vec3 vec;
-                                            vec3 vold = (maxv-minv)*vol_d;
-                                            float vol_l = length(vold);
-
-                                            vec4 col_acc = vec4(0,0,0,0);
-                                            vec3 zOffsetVec = vec3(0.0,0.0,zoffset/vol_d_pot.z);
-                                            vec3 backPos = gl_TexCoord[0].xyz;
-                                            vec3 lookVec = normalize(backPos - cameraPosition);
-
-
-                                            Ray eye = Ray( cameraPosition, lookVec);
-                                            BoundingBox box = BoundingBox(vec3(0.),vec3(1.));
-
-                                            float tnear, tfar;
-                                            IntersectBox(eye, box, tnear, tfar);
-                                            if(tnear < 0.15) tnear = 0.15;
-                                            if(tnear > tfar) discard;
-
-                                            vec3 rayStart = (eye.Origin + eye.Dir * tnear)*(maxv-minv)+minv;//vol_d/vol_d_pot;
-                                            vec3 rayStop = (eye.Origin + eye.Dir * tfar)*(maxv-minv)+minv;//vol_d/vol_d_pot;
-
-                                            vec3 dir = rayStop - rayStart; // starting position of the ray
-
-                                            vec = rayStart;
-                                            float dl = length(dir);
-                                            if(dl == clamp(dl,0.,vol_l)) {
-                                                int steps = int(floor(length(vold * dir) * quality));
-                                                vec3 delta_dir = dir/float(steps);
-                                                vec4 color_sample;
-                                                float aScale =  density/quality;
-
-                                                float random = fract(sin(gl_FragCoord.x * 12.9898 + gl_FragCoord.y * 78.233) * 43758.5453);
-                                                vec += delta_dir * random;
-
-                                                //raycast
-                                                for(int i = 0; i < steps; i++)
-                                                {
-                                                    vec3 vecz = vec + zOffsetVec;
-                                                    if(vecz.z > maxv.z) vecz.z-=maxv.z;
-                                                    color_sample = texture3D(volume_tex, vecz);
-                                                    if(color_sample.a > threshold) {
-
-                                                        float oneMinusAlpha = 1. - col_acc.a;
-                                                        color_sample.a *= aScale;
-                                                        col_acc.rgb = mix(col_acc.rgb, color_sample.rgb * color_sample.a, oneMinusAlpha);
-                                                        col_acc.a += color_sample.a * oneMinusAlpha;
-                                                        col_acc.rgb /= col_acc.a;
-                                                        if(col_acc.a >= 1.0) {
-                                                            break; // terminate if opacity > 1
-                                                        }
-                                                    }
-                                                    vec += delta_dir;
-                                                }
-                                            }
-                                            // export the rendered color
-                                            gl_FragColor = col_acc;
-
-                                        } )); // END FRAGMENT SHADER STRINGIFY
-
-    // For whatever reason, the stringify macro takes the fragment shader code as 2 arguments,
-    // wrapping it in () makes it compile, so trim them off
-    fragmentShader = fragmentShader.substr(1,fragmentShader.size()-2);
-
-    volumeShader.unload();
-    volumeShader.setupShaderFromSource(GL_VERTEX_SHADER, vertexShader);
-    volumeShader.setupShaderFromSource(GL_FRAGMENT_SHADER, fragmentShader);
-    volumeShader.linkProgram();
-
-    bIsPowerOfTwo = usePowerOfTwoTexSize;
-
-    volWidthPOT = volWidth = renderWidth = w;
-    volHeightPOT = volHeight = renderHeight = h;
-    volDepthPOT = volDepth = d;
-
-    if(bIsPowerOfTwo){
-        volWidthPOT = ofNextPow2(w);
-        volHeightPOT = ofNextPow2(h);
-        volDepthPOT = ofNextPow2(d);
-
-        ofLogVerbose() << "ofxVolumetrics::setup(): Using power of two texture size. Requested: " << w << "x" <<h<<"x"<<d<<". Actual: " << volWidthPOT<<"x"<<volHeightPOT<<"x"<<volDepthPOT<<".";
-    }
-
-    fboRender.allocate(w, h, GL_RGBA);
-    volumeTexture.allocate(volWidthPOT, volHeightPOT, volDepthPOT, GL_RGBA);
-    if(bIsPowerOfTwo){
-        // if using cropped power of two, blank out the extra memory
-        unsigned char * data;
-        data = new unsigned char[volWidthPOT*volHeightPOT*volDepthPOT*4];
-        memset(data,0,volWidthPOT*volHeightPOT*volDepthPOT*4);
-        volumeTexture.loadData(data,volWidthPOT, volHeightPOT, volDepthPOT, 0,0,0,GL_RGBA);
-    }
-    voxelRatio = _voxelRatio;
-    bIsInitialized = true;
-	
-	// added so that I can use my render
-	setCubeSize(ofVec3f(volWidth, volHeight, volDepth), _voxelRatio);
-	updateRenderDimentions();
-}
-/*
-void ofxVolumetrics::destroy()
-{
-    volumeShader.unload();
-//    fboBackground.destroy();
-//    fboRender.destroy();
-    volumeTexture.clear();
-
-    volWidth = renderWidth = 0;
-    volHeight = renderHeight = 0;
-    volDepth = 0;
-    bIsInitialized = false;
-}
-*/
-
 //--------------------------------------------------------------
 void ofxVolumetrics::setup(ofxVolume* _volume, ofVec3f _voxelRatio, bool usePowerOfTwoTexSize, GLint internalformat)
 {
     // FIXING GUI ERROR, https://github.com/openframeworks/openFrameworks/issues/1515
     GLuint clearErrors = glGetError();
 	
-	// load shader
+	// load shader in current project
 //	volumeShader.load("shaders/ofxVolumetrics");
+
+	// load shader in addon
+//	volumeShader.load("../../../../ofxVolumetrics/src/shaders/ofxVolumetrics");
 	volumeShader.load("../../../../ofxVolumetrics/src/shaders/ofxVolumetricsOriginal");
 	
 	// load volume to 3dTexture
     setVolume(_volume, usePowerOfTwoTexSize, internalformat);
 	
-	setCubeSize(vol->getSize(), _voxelRatio);
-//	setCubeSize(ofVec3f(151,188,154), _voxelRatio);
-	
+	setCubeSize((ofVec3f)vol->getSize(), _voxelRatio);
     updateRenderDimentions();
     
 	bIsInitialized = true;
@@ -297,16 +135,9 @@ void ofxVolumetrics::setVolume(ofxVolume* _volume, bool usePowerOfTwoTexSize, GL
 	volHeight		= vol->getHeight();
 	volDepth		= vol->getDepth();
 	
-/*	volWidth		= 151;
-	volHeight		= 188;
-	volDepth		= 154;
-*/
-//	cout <<"vol dim		" << volWidth<<"x"<<volHeight<<"x"<<volDepth<<".\n";
-//	cout <<"volPot dim	" << volWidthPOT<<"x"<<volHeightPOT<<"x"<<volDepthPOT<<".\n";
-	
     bIsPowerOfTwo = usePowerOfTwoTexSize;
     if(bIsPowerOfTwo){
-		ofLogVerbose() << "ofxVolumetrics::setup(): Using power of two texture size. Requested: "
+		ofLogVerbose() << "ofxVolumetrics::setVolume(): Using power of two texture size. Requested: "
 		<< volWidth		<<"x"<<	volHeight	<<"x"<<	volDepth <<". Actual: "
 		<< volWidthPOT	<<"x"<<	volHeightPOT<<"x"<< volDepthPOT <<".";
 		
@@ -317,6 +148,7 @@ void ofxVolumetrics::setVolume(ofxVolume* _volume, bool usePowerOfTwoTexSize, GL
         memset(data,0,volWidthPOT*volHeightPOT*volDepthPOT*4);
         volumeTexture.loadData(vol->getVoxels(),volWidthPOT, volHeightPOT, volDepthPOT, 0,0,0,GL_RGBA);
 */
+		
 //		unsigned char * data;
 //		data = new unsigned char[(int)volPot.getVolume()*4];
 //		memset(data,0,(int)volPot.getVolume()*4);
@@ -342,56 +174,6 @@ void ofxVolumetrics::setVolume(ofxVolume* _volume, bool usePowerOfTwoTexSize, GL
 }
 
 //--------------------------------------------------------------
-void ofxVolumetrics::setup(unsigned char * _data, ofVec3f _volSize, ofVec3f _voxelRatio, bool usePowerOfTwoTexSize, GLint internalformat)
-{
-	// FIXING GUI ERROR, https://github.com/openframeworks/openFrameworks/issues/1515
-	GLuint clearErrors = glGetError();
-
-//	volumeShader.load("shaders/ofxVolumetrics");
-	volumeShader.load("../../../../ofxVolumetrics/src/shaders/ofxVolumetricsOriginal");
-
-	voxelRatio = _voxelRatio;
-	setVolume(_data, _volSize, usePowerOfTwoTexSize, internalformat);
-	
-	float size  = ofGetHeight();
-	ofVec3f volumeSize = voxelRatio * ofVec3f(vol->getWidth(),vol->getHeight(),vol->getDepth());
-	float maxDim = max(max(volumeSize.x, volumeSize.y), volumeSize.z);
-	cubeSize = volumeSize * size / maxDim;
-
-    updateRenderDimentions();
-    bIsInitialized = true;
-	bNewCode = true;
-}
-//--------------------------------------------------------------
-void ofxVolumetrics::setVolume(unsigned char * _data, ofVec3f _volSize, bool usePowerOfTwoTexSize, GLint internalformat)
-{
-	/*
-    volumeTexture.clear();
-
-	bIsPowerOfTwo = usePowerOfTwoTexSize;
-    if(bIsPowerOfTwo){
-		
-		volPot.setSize(ofNextPow2(_volSize.x), ofNextPow2(_volSize.y), ofNextPow2(_volSize.z));
-		ofLogVerbose() << "ofxVolumetrics::setup(): Using power of two texture size. Requested: "
-		<< _volSize.x << "x" << _volSize.y <<"x"<< _volSize.z <<". Actual: "
-		<< volPot.w<< "x" << volPot.h<<"x"<< volPot.d<<".\n";
-		
-		// if using cropped power of two, blank out the extra memory
-		unsigned char * data;
-		data = new unsigned char[(int)volPot.getVolume()*4];
-		memset(data,0,(int)volPot.getVolume()*4);
-		volumeTexture.allocate(volPot.getSize(), internalformat);
-		//		 volumeTexture.loadData(d,volPot.getWidth(), volPot.getHeight(), volPot.getDepth(), 0,0,0,internalformat);
-		//		 volumeTexture.loadData(d, volPot.size, volOffset, internalformat);
-//		volumeTexture.loadData(vol, volOffset, internalformat);
-		vol->setFromVoxels(data, _volSize.x, _volSize.y, _volSize.z, 4);
-    }else{
-		volPot.setSize(vol->getSize());
-		volumeTexture.allocate( _volSize, internalformat);
-		volumeTexture.loadData( _data, vol->getSize(), volOffset, internalformat);
-    }*/
-}
-//--------------------------------------------------------------
 void ofxVolumetrics::updateRenderDimentions()
 {
 
@@ -404,87 +186,6 @@ void ofxVolumetrics::updateRenderDimentions()
 	ofLogVerbose("ofxVolumetrics::updateRenderDimentions()")
 	<< " fbo dimensions = "<< renderWidth<< "x" <<renderHeight;
 }
-
-/*
-//--------------------------------------------------------------
-void ofxVolumetrics::update()
-{
-    updateRenderDimentions();
-	cout <<"MY UPDATE*************************\n";
-	cout <<"cubeSize		" << cubeSize<<".\n";
-	cout <<"render		" << renderWidth<<"x"<< renderHeight<<".\n";
-	cout <<"vol dim		" << volWidth<<"x"<<volHeight<<"x"<<volDepth<<".\n";
-	cout <<"volPot dim	" << volWidthPOT<<"x"<<volHeightPOT<<"x"<<volDepthPOT<<".\n";
-	
-    GLfloat modl[16], proj[16];
-    glGetFloatv( GL_MODELVIEW_MATRIX, modl);
-    glGetFloatv(GL_PROJECTION_MATRIX, proj);
-    GLint color[4];
-    glGetIntegerv(GL_CURRENT_COLOR, color);
-	
-    ofVec3f scale,t;
-    ofQuaternion a,b;
-    ofMatrix4x4(modl).decompose(t, a, scale, b);
-	
-    GLint cull_mode;
-    glGetIntegerv(GL_FRONT_FACE, &cull_mode);
-    GLint cull_mode_fbo = (scale.x*scale.y*scale.z) > 0 ? GL_CCW : GL_CW;
-	
-	ofEnableDepthTest();
-    // raycasting pass
-    fboRender.begin();
-    volumeShader.begin();
-    ofClear(0,0,0,0);
-	
-    //load matricies from outside the FBO
-    glMatrixMode(GL_PROJECTION);
-    glLoadMatrixf(proj);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadMatrixf(modl);
-	
-    ofPushView();
-	ofTranslate(cubePos.x - cubeSize.x/2, cubePos.y - cubeSize.y/2, cubePos.z - cubeSize.z/2);
-    ofScale(cubeSize.x,cubeSize.y,cubeSize.z);
-	
-    //pass variables to the shader
-    glActiveTexture(GL_TEXTURE1);
-    volumeTexture.bind();
-    volumeShader.setUniform1i("volume_tex", 1); // volume texture reference
-    volumeTexture.unbind();
-    glActiveTexture(GL_TEXTURE0);
-	
-    volumeShader.setUniform3f("vol_d", (float)volWidth, (float)volHeight, (float)volDepth); //dimensions of the volume texture
-    volumeShader.setUniform3f("vol_d_pot", (float)volWidthPOT, (float)volHeightPOT, (float)volDepthPOT); //dimensions of the volume texture power of two
-    volumeShader.setUniform2f("bg_d", (float)renderWidth, (float)renderHeight); // dimensions of the background texture
-    volumeShader.setUniform1f("zoffset",0.0f); // used for animation so that we dont have to upload the entire volume every time
-    volumeShader.setUniform1f("quality", quality.z); // 0 ... 1
-    volumeShader.setUniform1f("density", density); // 0 ... 1
-    volumeShader.setUniform1f("threshold", threshold);//(float)mouseX/(float)ofGetWidth());
-	
-    glFrontFace(cull_mode_fbo);
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_FRONT);
-    drawRGBCube();
-    glDisable(GL_CULL_FACE);
-    glFrontFace(cull_mode);
-	
-	volumeShader.end();
-    
-	ofPopView();
-	
-	ofNoFill();
-    drawCube(1.);
-	ofDisableDepthTest();
-	
-    fboRender.end();
-	
-    glColor4iv(color);
-    ofSetupScreenOrtho();//ofGetWidth(), ofGetHeight(),OF_ORIENTATION_DEFAULT,false,0,1000);
-	fboRender.draw(0,ofGetHeight(),ofGetWidth(),-ofGetHeight());
-}
-*/
-
-
 
 //--------------------------------------------------------------
 void ofxVolumetrics::update()
@@ -590,115 +291,8 @@ void ofxVolumetrics::draw(float x, float y, float w, float h){
 	//  Draw the color mapping used on the screen, for viewer reference
 	//  lutTexture.draw(300, 50, 0, 256, 20);
 }
+
 //--------------------------------------------------------------
-void ofxVolumetrics::drawCube(float size)
-{
-    float f = .99999;
-	
-    // Draw Cube
-    ofPushStyle();
-	ofSetColor(120);
-	ofNoFill();
-    ofPushMatrix();
-		ofScale(cubeSize.x*f, cubeSize.y*f, cubeSize.z*f);
-		ofDrawBox(0,0,0,size);
-    ofPopMatrix();
-    ofPopStyle();
-}
-
-void ofxVolumetrics::updateVolumeData(unsigned char * data, int w, int h, int d, int xOffset, int yOffset, int zOffset)
-{
-    volumeTexture.loadData(data, w, h, d, xOffset, yOffset, zOffset, GL_RGBA);
-}
-
-void ofxVolumetrics::drawVolume(float x, float y, float z, float size, int zTexOffset)
-{
-	
-    ofVec3f volumeSize = voxelRatio * ofVec3f(volWidth,volHeight,volDepth);
-    float maxDim = max(max(volumeSize.x, volumeSize.y), volumeSize.z);
-    volumeSize = volumeSize * size / maxDim;
-
-    drawVolume(x, y, z, volumeSize.x, volumeSize.y, volumeSize.z, zTexOffset);
-}
-
-void ofxVolumetrics::drawVolume(float x, float y, float z, float w, float h, float d, int zTexOffset)
-{
-    updateRenderDimentions();
-	cout <<"HIS UPDATE-----------------------------\n";
-	cout <<"cubeSize		" << cubeSize<<".\n";
-	cout <<"render		" << renderWidth<<"x"<< renderHeight<<".\n";
-	cout <<"vol dim		" << volWidth<<"x"<<volHeight<<"x"<<volDepth<<".\n";
-	cout <<"volPot dim	" << volWidthPOT<<"x"<<volHeightPOT<<"x"<<volDepthPOT<<".\n";
-
-    GLfloat modl[16], proj[16];
-    glGetFloatv( GL_MODELVIEW_MATRIX, modl);
-    glGetFloatv(GL_PROJECTION_MATRIX, proj);
-    GLint color[4];
-    glGetIntegerv(GL_CURRENT_COLOR, color);
-
-    ofVec3f scale,t;
-    ofQuaternion a,b;
-    ofMatrix4x4(modl).decompose(t, a, scale, b);
-
-    GLint cull_mode;
-    glGetIntegerv(GL_FRONT_FACE, &cull_mode);
-    GLint cull_mode_fbo = (scale.x*scale.y*scale.z) > 0 ? GL_CCW : GL_CW;
-
-	ofEnableDepthTest();
-    /* raycasting pass */
-    fboRender.begin();
-    volumeShader.begin();
-    ofClear(0,0,0,0);
-
-    //load matricies from outside the FBO
-    glMatrixMode(GL_PROJECTION);
-    glLoadMatrixf(proj);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadMatrixf(modl);
-
-    ofPushView();
-	ofTranslate(cubePos.x - cubeSize.x/2, cubePos.y - cubeSize.y/2, cubePos.z - cubeSize.z/2);
-    ofScale(cubeSize.x,cubeSize.y,cubeSize.z);
-
-    //pass variables to the shader
-    glActiveTexture(GL_TEXTURE1);
-    volumeTexture.bind();
-    volumeShader.setUniform1i("volume_tex", 1); // volume texture reference
-    volumeTexture.unbind();
-    glActiveTexture(GL_TEXTURE0);
-
-    volumeShader.setUniform3f("vol_d", (float)volWidth, (float)volHeight, (float)volDepth); //dimensions of the volume texture
-    volumeShader.setUniform3f("vol_d_pot", (float)volWidthPOT, (float)volHeightPOT, (float)volDepthPOT); //dimensions of the volume texture power of two
-    volumeShader.setUniform2f("bg_d", (float)renderWidth, (float)renderHeight); // dimensions of the background texture
-    volumeShader.setUniform1f("zoffset",zTexOffset); // used for animation so that we dont have to upload the entire volume every time
-    volumeShader.setUniform1f("quality", quality.z); // 0 ... 1
-    volumeShader.setUniform1f("density", density); // 0 ... 1
-    volumeShader.setUniform1f("threshold", threshold);//(float)mouseX/(float)ofGetWidth());
-
-    glFrontFace(cull_mode_fbo);
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_FRONT);
-    drawRGBCube();
-    glDisable(GL_CULL_FACE);
-    glFrontFace(cull_mode);
-
-	volumeShader.end();
-    
-	ofPopView();
-
-	ofNoFill();
-    drawCube(1.);
-	ofDisableDepthTest();
-
-    fboRender.end();
-
-
-
-    glColor4iv(color);
-    ofSetupScreenOrtho();//ofGetWidth(), ofGetHeight(),OF_ORIENTATION_DEFAULT,false,0,1000);
-	fboRender.draw(0,ofGetHeight(),ofGetWidth(),-ofGetHeight());
-}
-
 void ofxVolumetrics::drawRGBCube()
 {
     glEnableClientState(GL_VERTEX_ARRAY);
@@ -849,5 +443,22 @@ void ofxVolumetrics::setCubeSize(ofVec3f _volumeSize, ofVec3f _voxelRatio) {
     cubeSize = volumeSize * screensize / maxDim;
 	ofLogNotice("ofxVolumetrics::setCubeSize()") << cubeSize;
 
+}
+//--------------------------------------------------------------
+
+//--------------------------------------------------------------
+void ofxVolumetrics::drawCube(float size)
+{
+    float f = .99999;
+	
+    // Draw Cube
+    ofPushStyle();
+	ofSetColor(120);
+	ofNoFill();
+    ofPushMatrix();
+	ofScale(cubeSize.x*f, cubeSize.y*f, cubeSize.z*f);
+	ofDrawBox(0,0,0,size);
+    ofPopMatrix();
+    ofPopStyle();
 }
 
