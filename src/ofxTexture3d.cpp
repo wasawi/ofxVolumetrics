@@ -1,32 +1,32 @@
 #include "ofxTexture3d.h"
 #include "ofTexture.cpp"
 
+//----------------------------------------------------------
 ofxTexture3d::ofxTexture3d()
 {
     //ctor
 }
-
+//----------------------------------------------------------
 ofxTexture3d::~ofxTexture3d()
 {
     release(texData.textureID);
 }
-
+//----------------------------------------------------------
 void ofxTexture3d::allocate(ofxIntPoint size, int internalGlDataType)
 {
 	allocate(size.x, size.y, size.z, internalGlDataType);
 }
-
-
+//----------------------------------------------------------
 void ofxTexture3d::allocate(ofxPoint size, int internalGlDataType)
 {
 	allocate((int)size.x, (int)size.y, (int)size.z, internalGlDataType);
 }
-
+//----------------------------------------------------------
 void ofxTexture3d::allocate(ofVec3f size, int internalGlDataType)
 {
 	allocate(size.x, size.y, size.z, internalGlDataType);
 }
-
+//----------------------------------------------------------
 void ofxTexture3d::allocate(int w, int h, int d, int internalGlDataType)
 {
     texData.tex_w = w;
@@ -67,44 +67,52 @@ void ofxTexture3d::allocate(int w, int h, int d, int internalGlDataType)
     texData.bFlipTexture = false;
     texData.bAllocated = true;
 }
-
+//----------------------------------------------------------
 void ofxTexture3d::loadData(ofxVolume& vol, ofVec3f offset, int glFormat)
 {
     loadData(vol.getVoxels(), vol.getWidth(), vol.getHeight(), vol.getDepth(), offset.x, offset.y, offset.z, glFormat);
 }
+//----------------------------------------------------------
 void ofxTexture3d::loadData(ofxVoxels vox)
 {
     loadData(vox.getVoxels(), vox.getWidth(), vox.getHeight(), vox.getDepth(), vox.getOffset().x, vox.getOffset().y, vox.getOffset().z, vox.getGlFormat());
 }
+//----------------------------------------------------------
 void ofxTexture3d::loadData(unsigned char * data, ofVec3f size, ofVec3f offset, int glFormat)
 {
     loadData((void *)data, size.x, size.y, size.z, offset.x, offset.y, offset.z, glFormat);
 }
+//----------------------------------------------------------
 void ofxTexture3d::loadData(unsigned char * data, int w, int h, int d, int xOffset, int yOffset, int zOffset, int glFormat)
 {
     loadData((void *)data, w, h, d, xOffset, yOffset, zOffset, glFormat);
 }
+//----------------------------------------------------------
 void ofxTexture3d::loadData(float* data, int w, int h, int d, int xOffset, int yOffset, int zOffset, int glFormat)
 {
     loadData((void *)data, w, h, d, xOffset, yOffset, zOffset, glFormat);
 }
+//----------------------------------------------------------
 void ofxTexture3d::loadData(unsigned short* data, int w, int h, int d, int xOffset, int yOffset, int zOffset, int glFormat)
 {
     loadData((void *)data, w, h, d, xOffset, yOffset, zOffset, glFormat);
 }
+//----------------------------------------------------------
 void ofxTexture3d::loadData(ofPixels & pix, int d, int xOffset, int yOffset, int zOffset)
 {
     loadData(pix.getPixels(), pix.getWidth(), pix.getHeight(), d, xOffset, yOffset, zOffset, ofGetGlFormat(pix));
 }
+//----------------------------------------------------------
 void ofxTexture3d::loadData(ofShortPixels & pix, int d, int xOffset, int yOffset, int zOffset)
 {
     loadData(pix.getPixels(), pix.getWidth(), pix.getHeight(), d, xOffset, yOffset, zOffset, ofGetGlFormat(pix));
 }
+//----------------------------------------------------------
 void ofxTexture3d::loadData(ofFloatPixels & pix, int d, int xOffset, int yOffset, int zOffset)
 {
     loadData(pix.getPixels(), pix.getWidth(), pix.getHeight(), d, xOffset, yOffset, zOffset, ofGetGlFormat(pix));
 }
-
+//----------------------------------------------------------
 void ofxTexture3d::loadData(void * data, int w, int h, int d, int xOffset, int yOffset, int zOffset, int glFormat)
 {
     if(glFormat!=texData.glType)
@@ -128,32 +136,29 @@ void ofxTexture3d::loadData(void * data, int w, int h, int d, int xOffset, int y
     glDisable(texData.textureTarget);
 
 }
-
+//----------------------------------------------------------
 void ofxTexture3d::clear()
 {
     release(texData.textureID);
     texData.textureID  = 0;
     texData.bAllocated = false;
 }
-
+//----------------------------------------------------------
 void ofxTexture3d::bind()
 {
     //we could check if it has been allocated - but we don't do that in draw()
     glEnable(texData.textureTarget);
     glBindTexture( texData.textureTarget, (GLuint)texData.textureID);
 }
-
 //----------------------------------------------------------
 void ofxTexture3d::unbind()
 {
     glDisable(texData.textureTarget);
 }
-
 //----------------------------------------------------------
 bool ofxTexture3d::bAllocated(){
 	return texData.bAllocated;
 }
-
 //----------------------------------------------------------
 bool ofxTexture3d::isAllocated(){
 	return texData.bAllocated;
@@ -222,9 +227,7 @@ float ofxTexture3d::getWidth(){
 float ofxTexture3d::getDepth(){
 	return texData.depth;
 }
-
-
-
+//----------------------------------------------------------
 ofxTextureData3d ofxTexture3d::getTextureData()
 {
     if(!texData.bAllocated)
