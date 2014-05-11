@@ -68,9 +68,13 @@ void ofxTexture3d::allocate(int w, int h, int d, int internalGlDataType)
     texData.bAllocated = true;
 }
 
-void ofxTexture3d::loadData(ofxVolume* vol, ofVec3f offset, int glFormat)
+void ofxTexture3d::loadData(ofxVolume& vol, ofVec3f offset, int glFormat)
 {
-    loadData(vol->getVoxels(), (int)vol->getWidth(), (int)vol->getHeight(), (int)vol->getDepth(), offset.x, offset.y, offset.z, glFormat);
+    loadData(vol.getVoxels(), vol.getWidth(), vol.getHeight(), vol.getDepth(), offset.x, offset.y, offset.z, glFormat);
+}
+void ofxTexture3d::loadData(ofxVoxels vox)
+{
+    loadData(vox.getVoxels(), vox.getWidth(), vox.getHeight(), vox.getDepth(), vox.getOffset().x, vox.getOffset().y, vox.getOffset().z, vox.getGlFormat());
 }
 void ofxTexture3d::loadData(unsigned char * data, ofVec3f size, ofVec3f offset, int glFormat)
 {
@@ -144,6 +148,82 @@ void ofxTexture3d::unbind()
 {
     glDisable(texData.textureTarget);
 }
+
+//----------------------------------------------------------
+bool ofxTexture3d::bAllocated(){
+	return texData.bAllocated;
+}
+
+//----------------------------------------------------------
+bool ofxTexture3d::isAllocated(){
+	return texData.bAllocated;
+}
+//----------------------------------------------------------
+void ofxTexture3d::setRGToRGBASwizzles(bool rToRGBSwizzles){
+#ifndef TARGET_OPENGLES
+	enableTextureTarget();
+	
+	glBindTexture(texData.textureTarget, (GLuint)texData.textureID);
+	if(rToRGBSwizzles){
+		if(texData.glTypeInternal==GL_R8 ||
+		   texData.glTypeInternal==GL_R16 ||
+		   texData.glTypeInternal==GL_R32F){
+			glTexParameteri(texData.textureTarget, GL_TEXTURE_SWIZZLE_R, GL_RED);
+			glTexParameteri(texData.textureTarget, GL_TEXTURE_SWIZZLE_G, GL_RED);
+			glTexParameteri(texData.textureTarget, GL_TEXTURE_SWIZZLE_B, GL_RED);
+			
+		}else if(texData.glTypeInternal==GL_RG8 ||
+				 texData.glTypeInternal==GL_RG16 ||
+				 texData.glTypeInternal==GL_RG32F){
+			glTexParameteri(texData.textureTarget, GL_TEXTURE_SWIZZLE_R, GL_RED);
+			glTexParameteri(texData.textureTarget, GL_TEXTURE_SWIZZLE_G, GL_RED);
+			glTexParameteri(texData.textureTarget, GL_TEXTURE_SWIZZLE_B, GL_RED);
+			glTexParameteri(texData.textureTarget, GL_TEXTURE_SWIZZLE_A, GL_GREEN);
+		}
+	}else{
+		if(texData.glTypeInternal==GL_R8 ||
+		   texData.glTypeInternal==GL_R16 ||
+		   texData.glTypeInternal==GL_R32F){
+			glTexParameteri(texData.textureTarget, GL_TEXTURE_SWIZZLE_R, GL_RED);
+			glTexParameteri(texData.textureTarget, GL_TEXTURE_SWIZZLE_G, GL_GREEN);
+			glTexParameteri(texData.textureTarget, GL_TEXTURE_SWIZZLE_B, GL_BLUE);
+			
+		}else if(texData.glTypeInternal==GL_RG8 ||
+				 texData.glTypeInternal==GL_RG16 ||
+				 texData.glTypeInternal==GL_RG32F){
+			glTexParameteri(texData.textureTarget, GL_TEXTURE_SWIZZLE_R, GL_RED);
+			glTexParameteri(texData.textureTarget, GL_TEXTURE_SWIZZLE_G, GL_GREEN);
+			glTexParameteri(texData.textureTarget, GL_TEXTURE_SWIZZLE_B, GL_BLUE);
+			glTexParameteri(texData.textureTarget, GL_TEXTURE_SWIZZLE_A, GL_ALPHA);
+		}
+	}
+	
+	glBindTexture( texData.textureTarget, 0);
+	disableTextureTarget();
+#endif
+}
+//----------------------------------------------------------
+void ofxTexture3d::enableTextureTarget(){
+	if(ofGetGLRenderer()) ofGetGLRenderer()->enableTextureTarget(texData.textureTarget);
+}
+//----------------------------------------------------------
+void ofxTexture3d::disableTextureTarget(){
+	if(ofGetGLRenderer()) ofGetGLRenderer()->disableTextureTarget(texData.textureTarget);
+}
+//----------------------------------------------------------
+float ofxTexture3d::getHeight(){
+	return texData.height;
+}
+//----------------------------------------------------------
+float ofxTexture3d::getWidth(){
+	return texData.width;
+}
+//----------------------------------------------------------
+float ofxTexture3d::getDepth(){
+	return texData.depth;
+}
+
+
 
 ofxTextureData3d ofxTexture3d::getTextureData()
 {

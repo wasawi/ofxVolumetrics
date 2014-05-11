@@ -103,6 +103,7 @@ private:
     ofVec3f volVerts[24];
     ofVec3f volNormals[24];
     ofVec3f voxelRatio;
+	
     bool bIsInitialized;
     int volWidth, volHeight, volDepth;
     int volWidthPOT, volHeightPOT, volDepthPOT;

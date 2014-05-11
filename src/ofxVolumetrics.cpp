@@ -154,7 +154,7 @@ void ofxVolumetrics::setVolume(ofxVolume* _volume, bool usePowerOfTwoTexSize, GL
 //		volumeTexture.loadData(data,volWidthPOT, volHeightPOT, volDepthPOT, 0,0,0,GL_RGBA);
 		
 		volumeTexture.allocate(volWidthPOT, volHeightPOT, volDepthPOT, internalformat);
-		volumeTexture.loadData(vol, volOffset, internalformat);
+		volumeTexture.loadData(*vol, volOffset, internalformat);
 		setVolumeTextureFilterMode(filterMode);
     }else{
 		volWidthPOT		= volWidth;
@@ -165,7 +165,7 @@ void ofxVolumetrics::setVolume(ofxVolume* _volume, bool usePowerOfTwoTexSize, GL
 		<< vol->getWidth() << "x" <<vol->getHeight()<<"x"<<vol->getDepth();
 
         volumeTexture.allocate(vol->getSize(), internalformat);
-        volumeTexture.loadData(vol, volOffset, internalformat);
+        volumeTexture.loadData(*vol, volOffset, internalformat);
 		setVolumeTextureFilterMode(filterMode);
     }
 }
