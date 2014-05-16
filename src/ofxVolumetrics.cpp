@@ -98,7 +98,18 @@ void ofxVolumetrics::destroy()
 }
 
 //--------------------------------------------------------------
-void ofxVolumetrics::setup(ofxVolume* _volume, ofVec3f _voxelRatio, bool usePowerOfTwoTexSize, GLint internalformat)
+void ofxVolumetrics::setup(ofxVolume* _volume)
+{
+    vol = _volume;
+	bool usePow2			= vol->getVoxelsRef().isPow2();
+	GLint internalformat	= vol->getVoxelsRef().getGlFormat();
+	ofVec3f _voxelRatio(1);
+	
+	setup( vol, _voxelRatio, usePow2, internalformat);
+}
+
+//--------------------------------------------------------------
+void ofxVolumetrics::setup(ofxVolume* _volume, ofVec3f _voxelRatio, bool usePow2, GLint internalformat)
 {
     // FIXING GUI ERROR, https://github.com/openframeworks/openFrameworks/issues/1515
     GLuint clearErrors = glGetError();
@@ -111,7 +122,7 @@ void ofxVolumetrics::setup(ofxVolume* _volume, ofVec3f _voxelRatio, bool usePowe
 //	volumeShader.load("../../../../ofxVolumetrics/src/shaders/ofxVolumetricsOriginal"); // accepts RGBA texture only
 	
 	// load volume to 3dTexture
-    setVolume(_volume, usePowerOfTwoTexSize, internalformat);
+    setVolume(_volume, usePow2, internalformat);
 	
 	setCubeSize((ofVec3f)vol->getSize(), _voxelRatio);
     updateRenderDimentions();
@@ -120,14 +131,14 @@ void ofxVolumetrics::setup(ofxVolume* _volume, ofVec3f _voxelRatio, bool usePowe
 }
 
 //--------------------------------------------------------------
-void ofxVolumetrics::setVolume(ofxVolume* _volume, bool usePowerOfTwoTexSize, GLint internalformat)
+void ofxVolumetrics::setVolume(ofxVolume* _volume, bool usePow2, GLint internalformat)
 {
     vol = _volume;
 	volWidth		= vol->getWidth();
 	volHeight		= vol->getHeight();
 	volDepth		= vol->getDepth();
 	
-    bIsPowerOfTwo = usePowerOfTwoTexSize;
+    bIsPowerOfTwo = usePow2;
     if(bIsPowerOfTwo){
 		volWidthPOT		= ofNextPow2(vol->getWidth());
 		volHeightPOT	= ofNextPow2(vol->getHeight());
@@ -154,18 +165,20 @@ void ofxVolumetrics::setVolume(ofxVolume* _volume, bool usePowerOfTwoTexSize, GL
 //		volumeTexture.loadData(data,volWidthPOT, volHeightPOT, volDepthPOT, 0,0,0,GL_RGBA);
 		
 		volumeTexture.allocate(volWidthPOT, volHeightPOT, volDepthPOT, internalformat);
-		volumeTexture.loadData(*vol, volOffset, internalformat);
+		volumeTexture.loadData(vol->getVoxelsRef());
 		setVolumeTextureFilterMode(filterMode);
     }else{
 		volWidthPOT		= volWidth;
 		volHeightPOT	= volHeight;
 		volDepthPOT		= volDepth;
 
-		ofLogVerbose() << "ofxVolumetrics::setup(): Requested: "
-		<< vol->getWidth() << "x" <<vol->getHeight()<<"x"<<vol->getDepth();
+		ofLogVerbose() << "ofxVolumetrics::setVolume(): Requested: "
+		<< vol->getWidth() << "x" <<vol->getHeight()<<"x"<<vol->getDepth()
+		<< " channels= "<< vol->getVoxelsRef().getNumChannels()
+		<< " bytesPerChannel= "<<  vol->getVoxelsRef().getBytesPerChannel();
 
-        volumeTexture.allocate(vol->getSize(), internalformat);
-        volumeTexture.loadData(*vol, volOffset, internalformat);
+        volumeTexture.allocate((ofVec3f)vol->getSize(), internalformat);
+		volumeTexture.loadData(vol->getVoxelsRef());
 		setVolumeTextureFilterMode(filterMode);
     }
 }
@@ -179,21 +192,23 @@ void ofxVolumetrics::updateRenderDimentions()
         renderWidth = ofGetWidth()*quality.x;
         renderHeight = ofGetHeight()*quality.x;
         fboRender.allocate(renderWidth, renderHeight, GL_RGBA);
+		ofLogVerbose("ofxVolumetrics::updateRenderDimentions()") << " fbo dimensions = "<< renderWidth<< "x" <<renderHeight;
     }
-	ofLogVerbose("ofxVolumetrics::updateRenderDimentions()")
-	<< " fbo dimensions = "<< renderWidth<< "x" <<renderHeight;
 }
 
 //--------------------------------------------------------------
 void ofxVolumetrics::update()
 {
+	
 /*    updateRenderDimentions();
-	cout <<"MY UPDATE*************************\n";
-	cout <<"cubeSize		" << cubeSize<<".\n";
-	cout <<"render		" << renderWidth<<"x"<< renderHeight<<".\n";
-	cout <<"vol dim		" << volWidth<<"x"<<volHeight<<"x"<<volDepth<<".\n";
-	cout <<"volPot dim	" << volWidthPOT<<"x"<<volHeightPOT<<"x"<<volDepthPOT<<".\n";
+	ofLogVerbose() <<"MY UPDATE*************************";
+	ofLogVerbose() <<"cubeSize		" << cubeSize<<".";
+	ofLogVerbose() <<"render		" << renderWidth<<"x"<< renderHeight;
+	ofLogVerbose() <<"vol dim		" << volWidth<<"x"<<volHeight<<"x"<<volDepth;
+	ofLogVerbose() <<"volPot dim	" << volWidthPOT<<"x"<<volHeightPOT<<"x"<<volDepthPOT;
 */
+	updateRenderDimentions();
+
 	ofMatrix4x4 modelView;
     ofMatrix4x4 projection;
     GLfloat modl[16], proj[16];
@@ -276,9 +291,9 @@ void ofxVolumetrics::update()
 	//  drawSphere();
     fboRender.end();
 	
-	glColor4iv(color);
-    ofSetupScreenOrtho();//ofGetWidth(), ofGetHeight(),OF_ORIENTATION_DEFAULT,false,0,1000);
-	fboRender.draw(0,ofGetHeight(),ofGetWidth(),-ofGetHeight());
+//	glColor4iv(color);
+//    ofSetupScreenOrtho();//ofGetWidth(), ofGetHeight(),OF_ORIENTATION_DEFAULT,false,0,1000);
+//	fboRender.draw(0,ofGetHeight(),ofGetWidth(),-ofGetHeight());
 }
 
 //--------------------------------------------------------------

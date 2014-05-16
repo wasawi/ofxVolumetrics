@@ -42,16 +42,17 @@ public:
     void setVolumeTextureFilterMode(GLint filterMode);
 	
 	//mine--------------------------------------------------------------
+	void setup(ofxVolume* _volume);
 	void setup(ofxVolume* _volume,
-			   ofVec3f _voxelSize = ofVec3f(1,1,1),
-			   bool usePowerOfTwoTexSize=false,
-			   GLint internalformat=GL_RGBA);
+			   ofVec3f _voxelSize,
+			   bool usePowerOfTwoTexSize = false,
+			   GLint internalformat = GL_RGBA);
 	
     void setVolume(ofxVolume* _volume,
 				   bool usePowerOfTwoTexSize=false,
 				   GLint internalformat=GL_RGBA);
 	
-    void setup(unsigned char * _data,
+    void setup(unsigned char* _data,
 			   ofVec3f _volSize,
 			   ofVec3f _voxelSize = ofVec3f(1,1,1),
 			   bool usePowerOfTwoTexSize=false,

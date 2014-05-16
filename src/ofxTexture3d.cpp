@@ -67,11 +67,13 @@ void ofxTexture3d::allocate(int w, int h, int d, int internalGlDataType)
     texData.bFlipTexture = false;
     texData.bAllocated = true;
 }
+/*
 //----------------------------------------------------------
 void ofxTexture3d::loadData(ofxVolume& vol, ofVec3f offset, int glFormat)
 {
     loadData(vol.getVoxels(), vol.getWidth(), vol.getHeight(), vol.getDepth(), offset.x, offset.y, offset.z, glFormat);
 }
+ */
 //----------------------------------------------------------
 void ofxTexture3d::loadData(ofxVoxels vox)
 {

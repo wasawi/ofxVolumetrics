@@ -1,8 +1,9 @@
 #pragma once
 
+//  Written by Timothy Scaffidi (http://timothyscaffidi.com)
+
 #include "ofTexture.h"
 #include "ofMain.h"
-#include "ofxVolume.h"
 #include "ofxVoxels.h"
 #include "ofxBox.h"
 #include "ofxPoint.h"
@@ -50,7 +51,7 @@ class ofxTexture3d
 		void allocate(ofVec3f size, int internalGlDataType);
         void allocate(int w, int h, int d, int internalGlDataType);
 	
-		void loadData(ofxVolume& vol, ofVec3f offset, int glFormat);
+//		void loadData(ofxVolume vol, ofVec3f offset, int glFormat);
 		void loadData(ofxVoxels vox);
 		void loadData(unsigned char * data, ofVec3f size, ofVec3f offset, int glFormat);
         void loadData(unsigned char * data, int w, int h, int d, int xOffset, int yOffset, int zOffset, int glFormat);
