@@ -4,8 +4,8 @@
 
 #include "ofTexture.h"
 #include "ofMain.h"
+
 #include "ofxVoxels.h"
-#include "ofxBox.h"
 #include "ofxPoint.h"
 
 class ofxTextureData3d : public ofTextureData
