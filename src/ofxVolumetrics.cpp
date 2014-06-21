@@ -1,17 +1,19 @@
-
-
 #include "ofxVolumetrics.h"
 #include "ofMain.h"
-#define STRINGIFY( A) #A
+
 ofxVolumetrics::ofxVolumetrics()
 {
     quality = ofVec3f(1.0);
     threshold = 1.0/255.0;
     density = 1.0;
+	dithering = 0.0;
     volWidth = renderWidth = 0;
     volHeight = renderHeight = 0;
     volDepth = 0;
     bIsInitialized = false;
+	clipPlaneDepth = 1;
+	azimuth = 0;
+	elevation = 0;
 
     /* Front side */
     volNormals[0] = ofVec3f(0.0, 0.0, 1.0);
@@ -86,149 +88,15 @@ ofxVolumetrics::~ofxVolumetrics()
     destroy();
 }
 
-void ofxVolumetrics::setup(int w, int h, int d, ofVec3f voxelSize, bool usePowerOfTwoTexSize)
+void ofxVolumetrics::setup(int w, int h, int d, ofVec3f voxelSize)
 {
-    string vertexShader = STRINGIFY(
-                                    varying vec3 cameraPosition;
-                                    void main()
-                                    {
-                                        gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-                                        gl_TexCoord[0] = gl_MultiTexCoord0; //poop
-                                        cameraPosition = (gl_ModelViewMatrixInverse * vec4(0.,0.,0.,1.)).xyz;
-                                    }); // END VERTEX SHADER STRINGIFY
-
-    string fragmentShader = STRINGIFY((#extension GL_ARB_texture_rectangle : enable \n
-                                        varying vec3 cameraPosition;
-
-                                        uniform sampler3D volume_tex;
-                                        uniform vec3 vol_d;
-                                        uniform vec3 vol_d_pot;
-                                        uniform vec2 bg_d;
-                                        uniform float zoffset;
-                                        uniform float quality;
-                                        uniform float threshold;
-                                        uniform float density;
-
-                                        struct Ray {
-                                            vec3 Origin;
-                                            vec3 Dir;
-                                        };
-
-                                        struct BoundingBox {
-                                            vec3 Min;
-                                            vec3 Max;
-                                        };
-
-                                        bool IntersectBox(Ray r, BoundingBox box, out float t0, out float t1)
-                                        {
-                                            vec3 invR = 1.0 / r.Dir;
-                                            vec3 tbot = invR * (box.Min-r.Origin);
-                                            vec3 ttop = invR * (box.Max-r.Origin);
-                                            vec3 tmin = min(ttop, tbot);
-                                            vec3 tmax = max(ttop, tbot);
-                                            vec2 t = max(tmin.xx, tmin.yz);
-                                            t0 = max(t.x, t.y);
-                                            t = min(tmax.xx, tmax.yz);
-                                            t1 = min(t.x, t.y);
-                                            return t0 <= t1;
-                                        }
-
-                                        void main()
-                                        {
-
-                                            vec3 minv = vec3(0.)+1./vol_d_pot;
-                                            vec3 maxv = (vol_d/vol_d_pot)-1./vol_d_pot;
-                                            vec3 vec;
-                                            vec3 vold = (maxv-minv)*vol_d;
-                                            float vol_l = length(vold);
-
-                                            vec4 col_acc = vec4(0,0,0,0);
-                                            vec3 zOffsetVec = vec3(0.0,0.0,zoffset/vol_d_pot.z);
-                                            vec3 backPos = gl_TexCoord[0].xyz;
-                                            vec3 lookVec = normalize(backPos - cameraPosition);
-
-
-                                            Ray eye = Ray( cameraPosition, lookVec);
-                                            BoundingBox box = BoundingBox(vec3(0.),vec3(1.));
-
-                                            float tnear, tfar;
-                                            IntersectBox(eye, box, tnear, tfar);
-                                            if(tnear < 0.15) tnear = 0.15;
-                                            if(tnear > tfar) discard;
-
-                                            vec3 rayStart = (eye.Origin + eye.Dir * tnear)*(maxv-minv)+minv;//vol_d/vol_d_pot;
-                                            vec3 rayStop = (eye.Origin + eye.Dir * tfar)*(maxv-minv)+minv;//vol_d/vol_d_pot;
-
-                                            vec3 dir = rayStop - rayStart; // starting position of the ray
-
-                                            vec = rayStart;
-                                            float dl = length(dir);
-                                            if(dl == clamp(dl,0.,vol_l)) {
-                                                int steps = int(floor(length(vold * dir) * quality));
-                                                vec3 delta_dir = dir/float(steps);
-                                                vec4 color_sample;
-                                                float aScale =  density/quality;
-
-                                                float random = fract(sin(gl_FragCoord.x * 12.9898 + gl_FragCoord.y * 78.233) * 43758.5453);
-                                                vec += delta_dir * random;
-
-                                                //raycast
-                                                for(int i = 0; i < steps; i++)
-                                                {
-                                                    vec3 vecz = vec + zOffsetVec;
-                                                    if(vecz.z > maxv.z) vecz.z-=maxv.z;
-                                                    color_sample = texture3D(volume_tex, vecz);
-                                                    if(color_sample.a > threshold) {
-
-                                                        float oneMinusAlpha = 1. - col_acc.a;
-                                                        color_sample.a *= aScale;
-                                                        col_acc.rgb = mix(col_acc.rgb, color_sample.rgb * color_sample.a, oneMinusAlpha);
-                                                        col_acc.a += color_sample.a * oneMinusAlpha;
-                                                        col_acc.rgb /= col_acc.a;
-                                                        if(col_acc.a >= 1.0) {
-                                                            break; // terminate if opacity > 1
-                                                        }
-                                                    }
-                                                    vec += delta_dir;
-                                                }
-                                            }
-                                            // export the rendered color
-                                            gl_FragColor = col_acc;
-
-                                        } )); // END FRAGMENT SHADER STRINGIFY
-
-    // For whatever reason, the stringify macro takes the fragment shader code as 2 arguments,
-    // wrapping it in () makes it compile, so trim them off
-    fragmentShader = fragmentShader.substr(1,fragmentShader.size()-2);
-
-    volumeShader.unload();
-    volumeShader.setupShaderFromSource(GL_VERTEX_SHADER, vertexShader);
-    volumeShader.setupShaderFromSource(GL_FRAGMENT_SHADER, fragmentShader);
-    volumeShader.linkProgram();
-
-    bIsPowerOfTwo = usePowerOfTwoTexSize;
-
-    volWidthPOT = volWidth = renderWidth = w;
-    volHeightPOT = volHeight = renderHeight = h;
-    volDepthPOT = volDepth = d;
-
-    if(bIsPowerOfTwo){
-        volWidthPOT = ofNextPow2(w);
-        volHeightPOT = ofNextPow2(h);
-        volDepthPOT = ofNextPow2(d);
-
-        ofLogVerbose() << "ofxVolumetrics::setup(): Using power of two texture size. Requested: " << w << "x" <<h<<"x"<<d<<". Actual: " << volWidthPOT<<"x"<<volHeightPOT<<"x"<<volDepthPOT<<".\n";
-    }
-
+	GLuint clearErrors = glGetError(); // FIXING GUI ERROR, https://github.com/openframeworks/openFrameworks/issues/1515
+    volumeShader.load("shaders/ofxVolumetrics");
+    volWidth = renderWidth = w;
+    volHeight = renderHeight = h;
+    volDepth = d;
     fboRender.allocate(w, h, GL_RGBA);
-    volumeTexture.allocate(volWidthPOT, volHeightPOT, volDepthPOT, GL_RGBA);
-    if(bIsPowerOfTwo){
-        // if using cropped power of two, blank out the extra memory
-        unsigned char * d;
-        d = new unsigned char[volWidthPOT*volHeightPOT*volDepthPOT*4];
-        memset(d,0,volWidthPOT*volHeightPOT*volDepthPOT*4);
-        volumeTexture.loadData(d,volWidthPOT, volHeightPOT, volDepthPOT, 0,0,0,GL_RGBA);
-    }
+    volumeTexture.allocate(w, h, d, GL_LUMINANCE);
     voxelRatio = voxelSize;
 
     bIsInitialized = true;
@@ -249,7 +117,7 @@ void ofxVolumetrics::destroy()
 
 void ofxVolumetrics::updateVolumeData(unsigned char * data, int w, int h, int d, int xOffset, int yOffset, int zOffset)
 {
-    volumeTexture.loadData(data, w, h, d, xOffset, yOffset, zOffset, GL_RGBA);
+    volumeTexture.loadData(data, w, h, d, xOffset, yOffset, zOffset, GL_LUMINANCE);
 }
 
 void ofxVolumetrics::drawVolume(float x, float y, float z, float size, int zTexOffset)
@@ -292,7 +160,7 @@ void ofxVolumetrics::drawVolume(float x, float y, float z, float w, float h, flo
     glMatrixMode(GL_MODELVIEW);
     glLoadMatrixf(modl);
 
-    ofTranslate(x-cubeSize.x/2, y-cubeSize.y/2, z-cubeSize.z/2);
+    ofTranslate(x-cubeSize.x/2-20, y-cubeSize.y/2, z-cubeSize.z/2);
     ofScale(cubeSize.x,cubeSize.y,cubeSize.z);
 
     //pass variables to the shader
@@ -300,14 +168,24 @@ void ofxVolumetrics::drawVolume(float x, float y, float z, float w, float h, flo
     volumeTexture.bind();
     volumeShader.setUniform1i("volume_tex", 1); // volume texture reference
     volumeTexture.unbind();
-    glActiveTexture(GL_TEXTURE0);
+    
+	glActiveTexture(GL_TEXTURE2);
+	lutTexture.bind();
+	volumeShader.setUniform1i("lutTexture", 2); // Texture lookup to the shader
+	lutTexture.unbind();
+	
+	glActiveTexture(GL_TEXTURE0);
+	
 
+	volumeShader.setUniform1f("clipPlaneDepth", 0.5*clipPlaneDepth);
+	volumeShader.setUniform1f("azimuth", 360*azimuth);
+	volumeShader.setUniform1f("elevation", 360*elevation);
     volumeShader.setUniform3f("vol_d", (float)volWidth, (float)volHeight, (float)volDepth); //dimensions of the volume texture
-    volumeShader.setUniform3f("vol_d_pot", (float)volWidthPOT, (float)volHeightPOT, (float)volDepthPOT); //dimensions of the volume texture power of two
     volumeShader.setUniform2f("bg_d", (float)renderWidth, (float)renderHeight); // dimensions of the background texture
     volumeShader.setUniform1f("zoffset",zTexOffset); // used for animation so that we dont have to upload the entire volume every time
     volumeShader.setUniform1f("quality", quality.z); // 0 ... 1
     volumeShader.setUniform1f("density", density); // 0 ... 1
+	volumeShader.setUniform1f("dithering", dithering); // 0 ... 1
     volumeShader.setUniform1f("threshold", threshold);//(float)mouseX/(float)ofGetWidth());
 
     glFrontFace(cull_mode_fbo);
@@ -320,11 +198,14 @@ void ofxVolumetrics::drawVolume(float x, float y, float z, float w, float h, flo
     volumeShader.end();
     fboRender.end();
 
-    ofPushView();
+	ofPushView();
 
     glColor4iv(color);
-    ofSetupScreenOrtho();//ofGetWidth(), ofGetHeight(),OF_ORIENTATION_DEFAULT,false,0,1000);
-    fboRender.draw(0,0,ofGetWidth(),ofGetHeight());
+	ofSetupScreenOrtho(ofGetWidth(), ofGetHeight(),OF_ORIENTATION_DEFAULT,false,0,1000);
+	//ofSetupScreenPerspective(ofGetWidth(), ofGetHeight(),OF_ORIENTATION_DEFAULT,false,50,0,1000);
+	fboRender.draw(0,0,ofGetWidth(),ofGetHeight());
+
+//	lutTexture.draw(300, 50, 0, 256, 20); // Draw the color mapping used on the screen, for viewer reference
 
     ofPopView();
 
@@ -349,6 +230,24 @@ void ofxVolumetrics::drawRGBCube()
     glDisableClientState(GL_TEXTURE_COORD_ARRAY);
     glDisableClientState(GL_VERTEX_ARRAY);
 }
+
+void ofxVolumetrics::createCLUT(){
+	//Creating the color mapping palette, which is adjustable by gaussian RGBA parameters.
+				colorPalette = new unsigned char[256*4]; 
+				for (int i = 0; i < 256; i++){
+					for(int j = 0; j < 1; j++){
+						colorPalette[(j*256+i)*4 + 0] = 255*RGBA[0]*exp( -(i-255*RGBA_mean[0])*(i-255*RGBA_mean[0])/(2*(255*RGBA_var[0])*(255*RGBA_var[0]))  );	// r
+						colorPalette[(j*256+i)*4 + 1] = 255*RGBA[1]*exp( -(i-255*RGBA_mean[1])*(i-255*RGBA_mean[1])/(2*(255*RGBA_var[1])*(255*RGBA_var[1]))  );	// g
+						colorPalette[(j*256+i)*4 + 2] = 255*RGBA[2]*exp( -(i-255*RGBA_mean[2])*(i-255*RGBA_mean[2])/(2*(255*RGBA_var[2])*(255*RGBA_var[2]))  ); // b
+						colorPalette[(j*256+i)*4 + 3] = 255*RGBA[3]*exp( -(i-255*RGBA_mean[3])*(i-255*RGBA_mean[3])/(2*(255*RGBA_var[3])*(255*RGBA_var[3]))  ); // a
+					}
+				}
+				// Palette created, now assigning this to a texture.
+				lutTexture.allocate(256,1, GL_RGBA);
+				lutTexture.loadData(colorPalette,256,1,GL_RGBA);
+
+}
+
 
 void ofxVolumetrics::updateRenderDimentions()
 {
@@ -378,6 +277,10 @@ void ofxVolumetrics::setThreshold(float t)
 void ofxVolumetrics::setDensity(float d)
 {
     density = MAX(d,0.0);
+}
+void ofxVolumetrics::setDithering(float d)
+{
+    dithering = ofClamp(d,0.0,1.0);
 }
 void ofxVolumetrics::setRenderSettings(float xyQuality, float zQuality, float dens, float thresh)
 {
@@ -436,6 +339,63 @@ float ofxVolumetrics::getDensity()
 {
     return density;
 }
+float ofxVolumetrics::getDithering()
+{
+    return dithering;
+}
 ofFbo & ofxVolumetrics::getFboReference(){
     return fboRender;
+}
+
+
+
+
+void ofxVolumetrics::setElevation(float elev){
+	elevation = elev;
+}
+
+void ofxVolumetrics::setAzimuth(float azi){
+	azimuth = azi;
+}
+
+void ofxVolumetrics::setClipDepth(float depth){
+	clipPlaneDepth = ofClamp(depth,-1.0,1.0);;
+}
+
+
+float ofxVolumetrics::getElevation(){
+	return elevation;
+}
+
+float ofxVolumetrics::getAzimuth(){
+	return azimuth;
+}
+
+float ofxVolumetrics::getClipDepth(){
+	return clipPlaneDepth;
+}
+
+void ofxVolumetrics::setRGBA_mean(float RGBA[]){
+	for(int i = 0; i < 4 ; i++){
+	RGBA_mean[i] = RGBA[i];
+	createCLUT(); // Creating color palette texture, and drawing this to the screen, along with the intensity histogram below
+
+	}
+}
+
+void ofxVolumetrics::setRGBA_var(float RGBA[]){
+	for(int i = 0; i < 4 ; i++){
+	RGBA_var[i] = RGBA[i];
+	createCLUT(); // Creating color palette texture, and drawing this to the screen, along with the intensity histogram below
+
+	}
+}
+
+
+void ofxVolumetrics::setRGBA(float RGBA_val[]){
+	for(int i = 0; i < 4 ; i++){
+	RGBA[i] = RGBA_val[i];
+	createCLUT(); // Creating color palette texture, and drawing this to the screen, along with the intensity histogram below
+
+	}
 }
